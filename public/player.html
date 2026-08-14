@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#10221a">
+  <title>Wojna Pastwisk - Gracz</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body class="player-page">
+  <div id="playerApp" class="player-app">
+    <header class="player-topbar">
+      <div class="compact-logo"><span>🐑</span> Wojna Pastwisk</div>
+      <div id="connectionState" class="connection-pill"><span class="status-dot"></span><span>Łączenie</span></div>
+    </header>
+
+    <main>
+      <section id="joinView" class="player-view is-active">
+        <div class="mobile-hero glass-panel">
+          <div class="hero-badge">🐑</div>
+          <p class="eyebrow">Kontroler pastwiska</p>
+          <h1>DOŁĄCZ DO WOJNY</h1>
+          <label class="form-label" for="roomInput">Kod z telewizora</label>
+          <input id="roomInput" class="room-input" inputmode="numeric" maxlength="4" placeholder="4827" autocomplete="one-time-code">
+          <button id="joinButton" class="primary-button giant-button">DOŁĄCZ</button>
+          <p id="joinError" class="form-error"></p>
+        </div>
+      </section>
+
+      <section id="flockView" class="player-view">
+        <div class="mobile-section-heading">
+          <p class="eyebrow">Wybierz tożsamość strategiczną</p>
+          <h1>Twoje stado</h1>
+        </div>
+        <div id="flockGrid" class="flock-grid"></div>
+        <div class="sticky-action-bar">
+          <button id="readyButton" class="primary-button giant-button" disabled>WYBIERZ STADO</button>
+        </div>
+      </section>
+
+      <section id="waitingView" class="player-view">
+        <div class="waiting-card glass-panel">
+          <div id="waitingEmblem" class="hero-badge">🐑</div>
+          <p class="eyebrow">Stado gotowe</p>
+          <h1 id="waitingFlockName">Czekamy na drugiego dowódcę</h1>
+          <div class="loader-sheep"><span>🐑</span><span>🐑</span><span>🐑</span></div>
+          <p>Nie mów przeciwnikowi, że nie masz planu.</p>
+          <button id="unreadyButton" class="secondary-button">Zmień stado</button>
+        </div>
+      </section>
+
+      <section id="prologuePhoneView" class="player-view">
+        <div class="waiting-card glass-panel">
+          <div class="hero-badge">📜</div>
+          <p class="eyebrow">Historia konfliktu</p>
+          <h1>Spójrz na telewizor</h1>
+          <p>Za chwilę dowiesz się, dlaczego trzy metry płotu zniszczyły pokój na całe osiem minut.</p>
+        </div>
+      </section>
+
+      <section id="gamePhoneView" class="player-view game-phone-view">
+        <div class="resource-strip">
+          <div class="resource-chip"><span>🌱</span><strong id="grassValue">0</strong><small id="grassRate">+0/s</small></div>
+          <div class="resource-chip"><span>🧶</span><strong id="woolValue">0</strong><small>wełna</small></div>
+          <div class="resource-chip"><span>🐑</span><strong id="sheepCount">0/6</strong><small>stado</small></div>
+          <div class="resource-chip"><span>🏰</span><strong id="phoneBaseHp">0</strong><small>HP</small></div>
+        </div>
+
+        <div class="phone-weather-bar glass-panel">
+          <span id="phoneWeatherIcon">☀️</span>
+          <span id="phoneSun">72%</span>
+          <span id="phoneWind">0 m/s</span>
+          <span id="phoneTimer">08:00</span>
+        </div>
+
+        <nav class="phone-tabs" aria-label="Nawigacja gry">
+          <button class="phone-tab is-active" data-tab="flock">STADO</button>
+          <button class="phone-tab" data-tab="catapult">KATAPULTA</button>
+          <button class="phone-tab" data-tab="upgrades">ULEPSZENIA</button>
+        </nav>
+
+        <section id="tab-flock" class="phone-panel is-active">
+          <div class="section-title-row">
+            <div>
+              <p class="eyebrow">Twoje jednostki</p>
+              <h2>Owce gotowe do negocjacji</h2>
+            </div>
+            <button id="buySheepButton" class="buy-button">+ OWCA <span id="sheepCostLabel">65 🌱</span></button>
+          </div>
+          <div id="sheepList" class="sheep-list"></div>
+
+          <article id="selectedSheepCard" class="selected-sheep-card glass-panel">
+            <div id="selectedSheepAvatar" class="selected-sheep-avatar">🐑</div>
+            <div class="selected-sheep-main">
+              <p class="eyebrow">Wybrana owca</p>
+              <h2 id="selectedSheepName">Brak</h2>
+              <div class="stat-grid">
+                <div><span>Masa ciała</span><strong id="selectedBodyMass">-</strong></div>
+                <div><span>Futro</span><strong id="selectedFur">-</strong></div>
+                <div><span>Masa lotu</span><strong id="selectedTotalMass">-</strong></div>
+                <div><span>Aerodynamika</span><strong id="selectedAero">-</strong></div>
+                <div><span>HP</span><strong id="selectedHp">-</strong></div>
+                <div><span>Status</span><strong id="selectedStatus">-</strong></div>
+              </div>
+            </div>
+          </article>
+
+          <article class="shear-card glass-panel">
+            <div class="section-title-row compact-row">
+              <div>
+                <p class="eyebrow">Salon polowy</p>
+                <h2>Strzyżenie strategiczne</h2>
+              </div>
+              <span id="shearGainPreview" class="gain-pill">+0 🧶</span>
+            </div>
+            <label for="furTargetSlider">Pozostaw futro: <strong id="furTargetValue">1,5 cm</strong></label>
+            <input id="furTargetSlider" type="range" min="1.5" max="10" step="0.1" value="1.5">
+            <div class="before-after-row">
+              <span>Ciężej = mocniej</span>
+              <span>Krócej = celniej</span>
+            </div>
+            <button id="shearButton" class="green-button">STRZYŻ!</button>
+          </article>
+        </section>
+
+        <section id="tab-catapult" class="phone-panel">
+          <article class="catapult-card glass-panel">
+            <div class="section-title-row">
+              <div>
+                <p class="eyebrow">Panel lotniczy</p>
+                <h2 id="catapultSheepName">Wybierz owcę</h2>
+              </div>
+              <span id="cooldownPill" class="cooldown-pill">GOTOWA</span>
+            </div>
+
+            <div class="flight-readout">
+              <div><span>Masa</span><strong id="flightMass">-</strong></div>
+              <div><span>Futro</span><strong id="flightFur">-</strong></div>
+              <div><span>Aero</span><strong id="flightAero">-</strong></div>
+              <div><span>Wiatr</span><strong id="flightWind">-</strong></div>
+            </div>
+
+            <label for="angleSlider">Kąt: <strong id="angleValue">45°</strong></label>
+            <input id="angleSlider" type="range" min="15" max="75" step="1" value="45">
+            <div class="angle-guide"><span>15°</span><span>45°</span><span>75°</span></div>
+
+            <div class="power-section">
+              <div class="power-label-row"><span>SIŁA</span><strong id="powerValue">40%</strong></div>
+              <div class="power-track"><div id="powerFill" class="power-fill"></div><div class="power-sweet-spot"></div></div>
+            </div>
+
+            <button id="fireButton" class="fire-button">
+              <span class="fire-main">PRZYTRZYMAJ</span>
+              <span class="fire-sub">Puść, żeby wystrzelić</span>
+            </button>
+            <p class="control-hint">Masa i długie futro zwiększają uderzenie, ale wiatr łatwiej robi z owcy polityka - leci nie tam, gdzie obiecała.</p>
+          </article>
+        </section>
+
+        <section id="tab-upgrades" class="phone-panel">
+          <div class="mobile-section-heading compact-heading">
+            <p class="eyebrow">Wydaj wełnę</p>
+            <h2>Rozwój cywilizacyjny</h2>
+          </div>
+          <div id="upgradeGrid" class="upgrade-grid"></div>
+          <article class="strategy-tip glass-panel">
+            <strong>Balans:</strong> mikstura daje więcej trawy, szampon więcej wełny, katapulta mocniejsze i częstsze strzały, a płot zwiększa HP i redukuje obrażenia.
+          </article>
+        </section>
+
+        <div id="phoneToast" class="phone-toast"></div>
+      </section>
+
+      <section id="phoneFinishedView" class="player-view">
+        <div class="waiting-card glass-panel">
+          <div id="phoneResultEmblem" class="hero-badge">🐑</div>
+          <p class="eyebrow">Koniec meczu</p>
+          <h1 id="phoneResultTitle">KONIEC</h1>
+          <p id="phoneResultText"></p>
+          <a href="/player.html" class="primary-button giant-button">DOŁĄCZ DO NOWEJ WOJNY</a>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/player.js"></script>
+</body>
+</html>
