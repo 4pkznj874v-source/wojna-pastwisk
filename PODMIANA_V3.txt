@@ -1,0 +1,23 @@
+WOJNA PASTWISK V3 - PODMIANA
+
+1. NIE usuwaj z GitHuba pliku public/assets/music.mp3 - to Twoja muzyka.
+2. Wgraj całą zawartość tego ZIP-a do repozytorium i zatwierdź Commit changes.
+3. Pliki o tych samych nazwach zostaną nadpisane.
+4. Folder public/images zawiera grafiki owiec, baranów, kóz, baz, katapult, chmurek i warsztatu naprawczego.
+5. public/assets/start_screen.png to nowy skalowalny ekran startowy.
+6. public/assets/tlo.png pozostaje tłem właściwej planszy.
+7. Render powinien wykonać Auto Deploy. Jeśli nie: Manual Deploy -> Deploy latest commit.
+8. Po deployu odśwież grę Ctrl+F5.
+
+Najważniejsze poprawki V3:
+- działający przycisk Ustawienia,
+- w ustawieniach: muzyka włącz/wyłącz + głośność,
+- brak przycisku języka PL,
+- ekran startowy i mapa skalowane do całego ekranu,
+- mały countdown zamiast gigantycznego napisu,
+- owce/barany/kozy używają sprite'ów PNG,
+- osobne sprite'y podczas skakania i lotu,
+- bazy zmieniają grafikę zależnie od HP,
+- katapulty zmieniają wygląd na 3 poziomach,
+- Warsztat Naprawczy używa grafik L1-L5,
+- po trafieniu jednostka zmienia się w chmurkę wznoszącą się do góry.

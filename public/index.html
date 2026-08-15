@@ -3,19 +3,87 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#0c1f18">
+  <meta name="theme-color" content="#10271d">
   <title>Wojna Pastwisk</title>
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body class="landing-page landing-art-page">
-  <main class="title-art-shell" aria-label="Wojna Pastwisk - wybór ekranu">
-    <img class="title-art-image" src="/assets/start.png" alt="Wojna Pastwisk - gra na telewizor i dwa telefony">
-    <a class="title-hotspot title-hotspot-tv" href="/tv.html" aria-label="Uruchom ekran telewizora"><span>Ekran TV</span></a>
-    <a class="title-hotspot title-hotspot-phone" href="/player.html" aria-label="Uruchom telefon gracza"><span>Telefon gracza</span></a>
+  <audio id="landingMusic" src="/assets/music.mp3" loop preload="auto"></audio>
+
+  <main class="title-art-shell" aria-label="Wojna Pastwisk">
+    <img class="title-art-image" src="/assets/start_screen.png" alt="Wojna Pastwisk - ekran startowy">
+
+    <a class="title-hotspot title-hotspot-tv" href="/tv.html" aria-label="Uruchom ekran telewizora"></a>
+    <a class="title-hotspot title-hotspot-phone" href="/player.html" aria-label="Uruchom kontroler telefonu"></a>
+
+    <button id="landingSettingsButton" class="floating-settings-button" type="button" aria-label="Ustawienia">⚙</button>
   </main>
-  <div class="title-mobile-actions">
-    <a class="primary-button large-button" href="/tv.html">EKRAN TV</a>
-    <a class="secondary-button large-button" href="/player.html">TELEFON GRACZA</a>
+
+  <div id="landingSettingsModal" class="settings-modal" hidden>
+    <div class="settings-card glass-panel" role="dialog" aria-modal="true" aria-labelledby="landingSettingsTitle">
+      <button id="landingSettingsClose" class="settings-close" type="button" aria-label="Zamknij">×</button>
+      <p class="eyebrow">Ustawienia</p>
+      <h2 id="landingSettingsTitle">Dźwięk</h2>
+      <label class="settings-row">
+        <span>Muzyka</span>
+        <button id="landingMusicToggle" class="mini-control" type="button">🔊 Włączona</button>
+      </label>
+      <label class="settings-row settings-slider-row">
+        <span>Głośność</span>
+        <input id="landingMusicVolume" type="range" min="0" max="1" step="0.05" value="0.45">
+        <strong id="landingVolumeLabel">45%</strong>
+      </label>
+    </div>
   </div>
+
+  <script>
+    (() => {
+      const audio = document.getElementById('landingMusic');
+      const modal = document.getElementById('landingSettingsModal');
+      const openBtn = document.getElementById('landingSettingsButton');
+      const closeBtn = document.getElementById('landingSettingsClose');
+      const toggle = document.getElementById('landingMusicToggle');
+      const volume = document.getElementById('landingMusicVolume');
+      const volumeLabel = document.getElementById('landingVolumeLabel');
+      const storedVolume = Number(localStorage.getItem('wp_music_volume') ?? 0.45);
+      const storedMuted = localStorage.getItem('wp_music_muted') === '1';
+      volume.value = String(Number.isFinite(storedVolume) ? storedVolume : 0.45);
+      audio.volume = Number(volume.value);
+      audio.muted = storedMuted;
+
+      const refresh = () => {
+        toggle.textContent = audio.muted ? '🔇 Wyłączona' : '🔊 Włączona';
+        volumeLabel.textContent = `${Math.round(Number(volume.value) * 100)}%`;
+      };
+      const tryPlay = () => audio.play().catch(() => {});
+      const open = () => { modal.hidden = false; tryPlay(); };
+      const close = () => { modal.hidden = true; };
+
+      openBtn.addEventListener('click', open);
+      closeBtn.addEventListener('click', close);
+      modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
+      toggle.addEventListener('click', () => {
+        audio.muted = !audio.muted;
+        localStorage.setItem('wp_music_muted', audio.muted ? '1' : '0');
+        if (!audio.muted) tryPlay();
+        refresh();
+      });
+      volume.addEventListener('input', () => {
+        audio.volume = Number(volume.value);
+        localStorage.setItem('wp_music_volume', volume.value);
+        if (audio.muted && Number(volume.value) > 0) {
+          audio.muted = false;
+          localStorage.setItem('wp_music_muted', '0');
+        }
+        tryPlay();
+        refresh();
+      });
+      document.querySelectorAll('.title-hotspot').forEach((el) => el.addEventListener('click', () => {
+        localStorage.setItem('wp_music_volume', volume.value);
+        localStorage.setItem('wp_music_muted', audio.muted ? '1' : '0');
+      }));
+      refresh();
+    })();
+  </script>
 </body>
 </html>

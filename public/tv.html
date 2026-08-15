@@ -9,37 +9,113 @@
 </head>
 <body class="tv-page">
   <audio id="gameMusic" src="/assets/music.mp3" loop preload="auto"></audio>
+
   <div id="tvApp" class="tv-app">
-    <section id="tvStartView" class="tv-view is-active tv-art-start">
-      <img class="tv-title-art" src="/assets/start.png" alt="Wojna Pastwisk">
-      <div class="tv-start-actions glass-panel">
-        <button id="createRoomButton" class="primary-button giant-button">UTWÓRZ POKÓJ</button>
-        <a class="secondary-button" href="/">Wróć</a>
-        <div class="music-row"><button id="musicToggleButton" class="icon-button">🔊</button><input id="musicVolume" type="range" min="0" max="1" step="0.05" value="0.45"></div>
+    <section id="tvStartView" class="tv-view is-active tv-title-view">
+      <img class="tv-title-art" src="/assets/start_screen.png" alt="Wojna Pastwisk">
+      <button id="createRoomButton" class="primary-button tv-create-room-button">UTWÓRZ POKÓJ</button>
+      <button id="tvSettingsButton" class="floating-settings-button tv-floating-settings" type="button" aria-label="Ustawienia">⚙</button>
+      <div id="tvSettingsModal" class="settings-modal" hidden>
+        <div class="settings-card glass-panel" role="dialog" aria-modal="true" aria-labelledby="tvSettingsTitle">
+          <button id="tvSettingsClose" class="settings-close" type="button" aria-label="Zamknij">×</button>
+          <p class="eyebrow">Ustawienia</p>
+          <h2 id="tvSettingsTitle">Dźwięk</h2>
+          <label class="settings-row">
+            <span>Muzyka</span>
+            <button id="musicToggleButton" class="mini-control" type="button">🔊 Włączona</button>
+          </label>
+          <label class="settings-row settings-slider-row">
+            <span>Głośność</span>
+            <input id="musicVolume" type="range" min="0" max="1" step="0.05" value="0.45" aria-label="Głośność muzyki">
+            <strong id="tvVolumeLabel">45%</strong>
+          </label>
+        </div>
       </div>
     </section>
+
     <section id="tvLobbyView" class="tv-view">
-      <div class="tv-background"></div><div class="lobby-overlay"></div>
+      <div class="tv-background"></div>
+      <div class="lobby-overlay"></div>
       <div class="tv-lobby-layout">
         <header class="lobby-header glass-panel">
-          <div><p class="eyebrow">Kod wojny</p><div id="roomCode" class="room-code">----</div></div>
-          <div class="lobby-title-block"><h1>Dołącz do wojny</h1><p>Zeskanuj QR albo wpisz kod na telefonie.</p></div>
+          <div>
+            <p class="eyebrow">Kod wojny</p>
+            <div id="roomCode" class="room-code">----</div>
+          </div>
+          <div class="lobby-title-block">
+            <h1>Dołącz do wojny</h1>
+            <p>Zeskanuj QR albo wpisz kod na telefonie.</p>
+          </div>
           <div class="connection-pill"><span id="serverDot" class="status-dot"></span><span id="serverStatus">Łączenie...</span></div>
         </header>
+
         <div class="lobby-main">
-          <div class="qr-card glass-panel"><img id="roomQr" alt="Kod QR do gry"><p id="joinUrl" class="join-url"></p></div>
+          <div class="qr-card glass-panel">
+            <img id="roomQr" alt="Kod QR do gry">
+            <p id="joinUrl" class="join-url"></p>
+          </div>
+
           <div class="players-column">
-            <article id="playerCard0" class="player-lobby-card blue-card glass-panel"><div class="player-number">1</div><div class="player-avatar">🐑</div><div><p class="eyebrow">Niebieskie pastwisko</p><h2 class="player-flock-name">Czeka na gracza</h2><p class="player-ready-state">Zeskanuj kod</p></div></article>
-            <article id="playerCard1" class="player-lobby-card red-card glass-panel"><div class="player-number">2</div><div class="player-avatar">🐑</div><div><p class="eyebrow">Czerwone pastwisko</p><h2 class="player-flock-name">Czeka na gracza</h2><p class="player-ready-state">Zeskanuj kod</p></div></article>
+            <article id="playerCard0" class="player-lobby-card blue-card glass-panel">
+              <div class="player-number">1</div>
+              <div class="player-avatar">🐑</div>
+              <div>
+                <p class="eyebrow">Niebieskie pastwisko</p>
+                <h2 class="player-flock-name">Czeka na gracza</h2>
+                <p class="player-ready-state">Zeskanuj kod</p>
+              </div>
+            </article>
+            <article id="playerCard1" class="player-lobby-card red-card glass-panel">
+              <div class="player-number">2</div>
+              <div class="player-avatar">🐑</div>
+              <div>
+                <p class="eyebrow">Czerwone pastwisko</p>
+                <h2 class="player-flock-name">Czeka na gracza</h2>
+                <p class="player-ready-state">Zeskanuj kod</p>
+              </div>
+            </article>
             <button id="startWarButton" class="primary-button giant-button" disabled>ROZPOCZNIJ WOJNĘ</button>
           </div>
         </div>
       </div>
     </section>
-    <section id="tvPrologueView" class="tv-view"><div class="tv-background prologue-background"></div><div class="prologue-vignette"></div><div class="prologue-content"><p id="prologueLine" class="prologue-line"></p><button id="skipPrologueButton" class="secondary-button">Pomiń prolog</button></div></section>
-    <section id="tvGameView" class="tv-view game-view"><div id="gameStage" class="game-stage"><canvas id="gameCanvas" width="1600" height="900"></canvas><div id="countdownOverlay" class="countdown-overlay"></div><div id="toastStack" class="toast-stack"></div></div><div class="tv-bottom-controls"><button id="gameMusicToggle" class="mini-control">🔊 Muzyka</button><button id="fullscreenButton" class="mini-control">⛶ Pełny ekran</button></div></section>
-    <section id="tvFinishedView" class="tv-view"><div class="tv-background"></div><div class="finish-overlay"></div><div class="finish-card glass-panel"><p class="eyebrow">Koniec wojny</p><div id="winnerEmblem" class="winner-emblem">🐑</div><h1 id="winnerTitle">ZWYCIĘSTWO</h1><p id="winnerSubtitle"></p><div id="finalStats" class="final-stats"></div><a href="/tv.html" class="primary-button giant-button">NOWA WOJNA</a></div></section>
+
+    <section id="tvPrologueView" class="tv-view">
+      <div class="tv-background prologue-background"></div>
+      <div class="prologue-vignette"></div>
+      <div class="prologue-content">
+        <p id="prologueLine" class="prologue-line"></p>
+        <button id="skipPrologueButton" class="secondary-button">Pomiń prolog</button>
+      </div>
+    </section>
+
+    <section id="tvGameView" class="tv-view game-view">
+      <div id="gameStage" class="game-stage">
+        <canvas id="gameCanvas" width="1600" height="900"></canvas>
+        <div id="countdownOverlay" class="countdown-overlay"></div>
+        <div id="toastStack" class="toast-stack"></div>
+      </div>
+      <div class="tv-bottom-controls">
+        <button id="gameMusicToggle" class="mini-control">🔊 Muzyka</button>
+        <button id="fullscreenButton" class="mini-control">⛶ Pełny ekran</button>
+      </div>
+    </section>
+
+    <section id="tvFinishedView" class="tv-view">
+      <div class="tv-background"></div>
+      <div class="finish-overlay"></div>
+      <div class="finish-card glass-panel">
+        <p class="eyebrow">Koniec wojny</p>
+        <div id="winnerEmblem" class="winner-emblem">🐑</div>
+        <h1 id="winnerTitle">ZWYCIĘSTWO</h1>
+        <p id="winnerSubtitle"></p>
+        <div id="finalStats" class="final-stats"></div>
+        <a href="/tv.html" class="primary-button giant-button">NOWA WOJNA</a>
+      </div>
+    </section>
   </div>
-  <script src="/socket.io/socket.io.js"></script><script src="/tv.js"></script>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/tv.js"></script>
 </body>
 </html>

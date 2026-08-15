@@ -1,14 +1,12 @@
 @echo off
-setlocal
-cd /d "%~dp0"
 where node >nul 2>nul
 if errorlevel 1 (
-  echo Node.js is missing. Install Node.js 20 or newer.
+  echo Node.js 20 or newer is required.
   pause
   exit /b 1
 )
 echo Installing dependencies...
-call npm install
+call npm install --no-audit --no-fund
 if errorlevel 1 (
   echo Installation failed.
   pause

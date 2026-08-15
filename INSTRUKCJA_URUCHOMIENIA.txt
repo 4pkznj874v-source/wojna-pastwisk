@@ -1,26 +1,13 @@
-WOJNA PASTWISK - URUCHOMIENIE
+WOJNA PASTWISK v2 - PODMIANA NA GITHUB/RENDER
 
-WINDOWS
-1. Zainstaluj Node.js 20 lub nowszy.
-2. Rozpakuj ZIP.
-3. Kliknij START_WINDOWS.bat.
-4. Otwórz na telewizorze adres pokazany jako "W sieci Wi-Fi".
+1. Rozpakuj paczke.
+2. W repozytorium GitHub nadpisz WSZYSTKIE stare pliki zawartoscia folderu wojna-pastwisk.
+3. Nie wgrywaj samego ZIP-a. W katalogu glownym repo musza byc package.json i server.js.
+4. Zapisz zmiany przez Commit changes.
+5. Render powinien wdrozyc commit automatycznie.
+6. Jesli nie: Render -> Manual Deploy -> Deploy latest commit.
+7. Po wdrozeniu odswiez gre przez Ctrl+F5.
 
-MAC / LINUX
-1. Otwórz Terminal w folderze gry.
-2. Wpisz:
-   ./START_MAC_LINUX.sh
-3. Otwórz na telewizorze adres pokazany jako "W sieci Wi-Fi".
-
-GRA
-1. Na telewizorze wybierz Ekran TV i kliknij NOWA WOJNA.
-2. Zeskanuj QR dwoma telefonami.
-3. Wybierz stada i kliknij gotowość.
-4. Na telewizorze rozpocznij wojnę.
-
-MUZYKA
-Zastąp plik public/assets/music.mp3 własnym utworem o tej samej nazwie.
-W paczce jest cichy plik techniczny, aby ścieżka działała od razu.
-
-TŁO
-Główna grafika znajduje się w public/assets/tlo.png.
+Muzyka: public/assets/music.mp3
+Tlo gry: public/assets/tlo.png
+Ekran startowy: public/assets/start-screen.png
