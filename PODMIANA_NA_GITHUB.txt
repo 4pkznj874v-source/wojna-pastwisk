@@ -1,0 +1,7 @@
+1. Rozpakuj ZIP.
+2. Nie wrzucaj samego ZIP-a.
+3. Wgraj całą zawartość folderu do głównego katalogu repozytorium wojna-pastwisk.
+4. Commit changes.
+5. Render powinien wdrożyć automatycznie. Jeśli nie: Manual Deploy -> Deploy latest commit.
+6. Po wdrożeniu użyj Ctrl+F5.
+7. Zachowaj swój public/assets/music.mp3 albo podmień plik po aktualizacji.

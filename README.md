@@ -1,90 +1,28 @@
-# Wojna Pastwisk
+# Wojna Pastwisk v2
 
-Grywalna wersja 1v1:
+Gra 1v1 na wspólny ekran TV i dwa telefony.
 
-- telewizor lub komputer pokazuje wspólną planszę,
-- dwa telefony działają jako prywatne kontrolery,
-- komunikacja odbywa się w czasie rzeczywistym przez Socket.IO,
-- tło gry: `public/assets/tlo.png`,
-- muzyka: `public/assets/music.mp3`.
+## Zmiany v2
 
-## Szybkie uruchomienie na jednej sieci Wi-Fi
+- baza: 5000 HP i 4 stany wizualne,
+- limit: 20 jednostek,
+- owce, barany i kozy,
+- baran: 2x cena i 2x obrażenia, tyle samo wełny,
+- koza: połowa ceny, 0,7x obrażeń, bez wełny,
+- wystrzelona jednostka jest tracona,
+- trafienie bazy zmienia jednostkę w chmurkę,
+- 5 poziomów każdego ulepszenia,
+- 3 widoczne formy budynków i katapulty,
+- osobne ulepszenia owiec, baranów i kóz,
+- Warsztat Naprawczy z aktywną i pasywną naprawą,
+- silny wiatr zmieniający się co 10-17 sekund,
+- losowa korekta kąta i mocy od -10% do +10%,
+- Chwała za zakup, utratę jednostek i obrażenia.
 
-Wymagany jest Node.js 20 lub nowszy.
+## Publikacja
 
-```bash
-npm install
-npm start
-```
+Wgraj całą zawartość projektu do głównego katalogu repozytorium GitHub. Render: `npm install`, potem `npm start`.
 
-Serwer wyświetli adres lokalny, np.:
+## Muzyka
 
-```text
-http://192.168.1.20:3000
-```
-
-1. Otwórz ten adres na telewizorze lub komputerze.
-2. Wybierz **Ekran TV**.
-3. Kliknij **Nowa wojna**.
-4. Zeskanuj kod QR dwoma telefonami.
-5. Każdy gracz wybiera stado i klika **Gotowy**.
-6. Na telewizorze kliknij **Rozpocznij wojnę**.
-
-Wszystkie urządzenia muszą być w tej samej sieci Wi-Fi. Zapora systemowa musi pozwalać Node.js na połączenia przychodzące.
-
-## Własna muzyka
-
-W paczce znajduje się jednosekundowy, cichy plik techniczny. Zastąp go własnym utworem, zachowując dokładną nazwę:
-
-```text
-public/assets/music.mp3
-```
-
-Muzyka uruchamia się po kliknięciu przycisku na ekranie TV, zgodnie z ograniczeniami autoplay w przeglądarkach.
-
-## Publikacja przez GitHub i Render
-
-GitHub przechowuje kod, ale GitHub Pages nie uruchamia serwera Socket.IO. Najprostszy wariant:
-
-1. Utwórz repozytorium GitHub i wgraj wszystkie pliki projektu.
-2. W Render wybierz **New Web Service**.
-3. Połącz repozytorium.
-4. Render wykryje `render.yaml` albo ustaw:
-   - Build Command: `npm install`
-   - Start Command: `npm start`
-5. Po wdrożeniu otwórz publiczny adres Render na telewizorze.
-
-## Najważniejsze pliki
-
-```text
-server.js                 logika meczu i synchronizacja
-public/tv.html            ekran telewizora
-public/tv.js              renderowanie planszy i animacji
-public/player.html        kontroler telefonu
-public/player.js          sterowanie gracza
-public/styles.css         wygląd gry
-public/assets/tlo.png     statyczne tło planszy
-public/assets/music.mp3   muzyka w pętli
-```
-
-## Regulacja meczu
-
-Najważniejsze wartości znajdują się na początku `server.js` w obiekcie `CONFIG`:
-
-- długość meczu,
-- HP baz,
-- produkcja trawy,
-- koszt owiec,
-- ceny ulepszeń,
-- cooldown katapulty.
-
-## Zasady
-
-- Słońce wpływa na tempo wzrostu trawy.
-- Za trawę kupuje się owce.
-- Futro rośnie automatycznie.
-- Strzyżenie daje wełnę.
-- Długość futra zwiększa masę, ale pogarsza aerodynamikę.
-- Masa, futro, wiatr, pogoda, kąt i siła wpływają na lot.
-- Wełna finansuje miksturę do trawy, szampon, katapultę i fortyfikacje.
-- Wygrywa gracz, który zniszczy bazę przeciwnika albo ma więcej HP po upływie czasu.
+Gra używa `public/assets/music.mp3`. Zachowaj własny plik o tej nazwie.

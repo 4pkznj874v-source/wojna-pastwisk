@@ -1,0 +1,26 @@
+WOJNA PASTWISK - URUCHOMIENIE
+
+WINDOWS
+1. Zainstaluj Node.js 20 lub nowszy.
+2. Rozpakuj ZIP.
+3. Kliknij START_WINDOWS.bat.
+4. Otwórz na telewizorze adres pokazany jako "W sieci Wi-Fi".
+
+MAC / LINUX
+1. Otwórz Terminal w folderze gry.
+2. Wpisz:
+   ./START_MAC_LINUX.sh
+3. Otwórz na telewizorze adres pokazany jako "W sieci Wi-Fi".
+
+GRA
+1. Na telewizorze wybierz Ekran TV i kliknij NOWA WOJNA.
+2. Zeskanuj QR dwoma telefonami.
+3. Wybierz stada i kliknij gotowość.
+4. Na telewizorze rozpocznij wojnę.
+
+MUZYKA
+Zastąp plik public/assets/music.mp3 własnym utworem o tej samej nazwie.
+W paczce jest cichy plik techniczny, aby ścieżka działała od razu.
+
+TŁO
+Główna grafika znajduje się w public/assets/tlo.png.

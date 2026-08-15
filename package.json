@@ -1,8 +1,8 @@
 {
   "name": "wojna-pastwisk",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
-  "description": "Wojna Pastwisk - gra 1v1 na telewizor i dwa telefony",
+  "description": "Wojna Pastwisk v2 - gra 1v1 na telewizor i dwa telefony",
   "main": "server.js",
   "type": "commonjs",
   "scripts": {

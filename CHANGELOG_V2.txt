@@ -1,0 +1,17 @@
+WOJNA PASTWISK v2
+
+- Nowy ekran startowy start.png.
+- Baza: 5000 HP i 4 stany wizualne.
+- Limit: 20 jednostek.
+- Owce, barany i kozy.
+- Baran: 2x cena, 2x obrazenia, tyle samo welny.
+- Koza: 1/2 ceny, 0,7x obrazen, brak welny.
+- Wystrzelona jednostka jest tracona.
+- Trafienie bazy zmienia jednostke w chmurke.
+- Losowy blad kata i mocy: od -10% do +10%.
+- Wiatr zmienia sie mocno i czesto.
+- Wszystkie ulepszenia: 5 poziomow.
+- Budynki i katapulta: 3 formy wizualne.
+- Ulepszanie owiec, baranow i koz.
+- Warsztat Naprawczy: 5 poziomow, naprawa aktywna i pasywna.
+- Chwala za zakup, utrate jednostki i obrazenia bazy.

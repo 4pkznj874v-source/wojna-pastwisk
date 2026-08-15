@@ -10,29 +10,33 @@ const { Server } = require('socket.io');
 
 const CONFIG = Object.freeze({
   port: Number(process.env.PORT || 3000),
-  matchDurationMs: 8 * 60 * 1000,
+  matchDurationMs: 10 * 60 * 1000,
   prologueDurationMs: 19000,
   tickMs: 100,
-  publicBroadcastMs: 200,
-  privateBroadcastMs: 300,
-  baseHp: 1600,
-  startingGrass: 160,
-  startingWool: 15,
-  baseGrassPerSecond: 1.25,
-  sheepCost: 65,
-  sheepLimit: 6,
-  minFurCm: 1.5,
-  woolPerCm: 5,
-  baseFurGrowthPerSecond: 0.045,
-  baseCatapultCooldownMs: 7600,
-  recoveryMs: 8000,
+  publicBroadcastMs: 180,
+  privateBroadcastMs: 260,
+  baseHp: 5000,
+  startingGrass: 240,
+  startingWool: 70,
+  baseGrassPerSecond: 2.15,
+  unitLimit: 20,
+  minFurCm: 1.2,
+  woolPerCm: 6,
+  baseFurGrowthPerSecond: 0.048,
+  baseCatapultCooldownMs: 7200,
   roomRetentionMs: 5 * 60 * 1000,
-  finalRushMs: 60 * 1000,
+  finalRushMs: 90 * 1000,
+  damageGloryPerHp: 0.15,
+  actionVariancePct: 10,
   upgradeCosts: {
-    fertilizer: [70, 120, 180],
-    shampoo: [65, 115, 170],
-    catapult: [80, 140, 210],
-    fort: [90, 150, 230]
+    fertilizer: [70, 110, 165, 235, 325],
+    shampoo: [65, 105, 155, 225, 310],
+    catapult: [85, 135, 200, 285, 390],
+    fort: [95, 155, 225, 315, 425],
+    repair: [100, 160, 235, 330, 445],
+    sheepTech: [70, 115, 170, 245, 335],
+    ramTech: [85, 140, 205, 295, 405],
+    goatTech: [55, 90, 135, 195, 270]
   }
 });
 
@@ -49,59 +53,39 @@ const FLOCKS = Object.freeze([
   { id: 'wolne-owce', name: 'Wolne Owce Doliny', motto: 'Wolność, równość, dodatkowa porcja siana.', emblem: '☁️' }
 ]);
 
-const SHEEP_TYPES = Object.freeze({
-  zez: {
-    label: 'Zezik',
-    mass: [42, 56],
-    hp: 92,
-    fur: [2.5, 5.5],
-    furMax: 9,
-    furGrowth: 0.95,
-    wool: 0.95,
-    aeroBonus: 12,
-    damage: 0.95,
-    weight: 35,
-    names: ['Zezon', 'Krzyś Kątownik', 'Podwójny Cel', 'Bolek Dwa Widoki']
+const UNIT_TYPES = Object.freeze({
+  sheep: {
+    label: 'Owca', plural: 'Owce', cost: 80,
+    mass: [48, 82], fur: [3.8, 8.2], furMax: 14, furGrowth: 1,
+    wool: 1, damage: 1, aeroBonus: 3, purchaseGlory: 10, lossGlory: 10, icon: '🐑',
+    looks: ['zez', 'puchata', 'brudna', 'wesola', 'zaspana'],
+    names: ['Zezon', 'Puchomir', 'Kałużka', 'Becia', 'Grażyna z Łąki', 'Kłębek', 'Krzywy Mietek']
   },
-  puszek: {
-    label: 'Puszek',
-    mass: [48, 66],
-    hp: 108,
-    fur: [5, 9],
-    furMax: 14,
-    furGrowth: 1.2,
-    wool: 1.25,
-    aeroBonus: -6,
-    damage: 1,
-    weight: 30,
-    names: ['Puchomir', 'Kłębek', 'Kołdra', 'Pan Objętość']
+  ram: {
+    label: 'Baran', plural: 'Barany', cost: 160,
+    mass: [82, 125], fur: [3.2, 7.2], furMax: 12, furGrowth: 0.92,
+    wool: 1, damage: 2, aeroBonus: -4, purchaseGlory: 10, lossGlory: 10, icon: '🐏',
+    looks: ['wielkooki', 'rogaty', 'zdziwiony', 'dostojny'],
+    names: ['Baran Wielkooki', 'Rogaty Mietek', 'Taraniusz', 'Lord Rogal', 'Bodzio Bez Hamulców']
   },
-  blotniak: {
-    label: 'Błotniak',
-    mass: [55, 75],
-    hp: 122,
-    fur: [3, 7],
-    furMax: 11,
-    furGrowth: 1,
-    wool: 1,
-    aeroBonus: -8,
-    damage: 1.1,
-    weight: 20,
-    names: ['Błotko', 'Kałużnik', 'Brudas', 'Pan Nie Dotykaj']
-  },
-  baran: {
-    label: 'Baran Wielkooki',
-    mass: [70, 95],
-    hp: 148,
-    fur: [2, 6],
-    furMax: 8,
-    furGrowth: 0.78,
-    wool: 0.78,
-    aeroBonus: -3,
-    damage: 1.28,
-    weight: 15,
-    names: ['Wielkie Oczy', 'Taraniusz', 'Rogaty Mietek', 'Baran Bez Planu']
+  goat: {
+    label: 'Koza', plural: 'Kozy', cost: 40,
+    mass: [35, 62], fur: [1.8, 5.2], furMax: 8, furGrowth: 0.72,
+    wool: 0, damage: 0.7, aeroBonus: 9, purchaseGlory: 0, lossGlory: 5, icon: '🐐',
+    looks: ['brodata', 'szalona', 'chuda', 'zadziorna'],
+    names: ['Koza Chaosu', 'Broda', 'Halina z Płotu', 'Kopytko', 'Pani Zjem Wszystko']
   }
+});
+
+const UPGRADE_LABELS = Object.freeze({
+  fertilizer: 'Magiczna Mikstura do Trawki',
+  shampoo: 'Szampon Turbo-Wool',
+  catapult: 'Katapulta po Tuningu',
+  fort: 'Forteca z Certyfikatem Płotu',
+  repair: 'Warsztat Naprawczy „Jakoś To Będzie”',
+  sheepTech: 'Akademia Owczej Balistyki',
+  ramTech: 'Wyższa Szkoła Taranowania',
+  goatTech: 'Kurs Kozy Niekontrolowanej'
 });
 
 const PROLOGUE = Object.freeze([
@@ -117,53 +101,21 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: { origin: true, credentials: true },
-  connectionStateRecovery: {
-    maxDisconnectionDuration: 120000,
-    skipMiddlewares: true
-  }
+  connectionStateRecovery: { maxDisconnectionDuration: 120000, skipMiddlewares: true }
 });
 
-app.use(express.static(path.join(__dirname, 'public'), {
-  extensions: ['html']
-}));
-
-app.get('/health', (_req, res) => {
-  res.json({ ok: true, rooms: rooms.size, time: new Date().toISOString() });
-});
-
+app.use(express.static(path.join(__dirname, 'public'), { extensions: ['html'] }));
 const rooms = new Map();
+app.get('/health', (_req, res) => res.json({ ok: true, rooms: rooms.size, time: new Date().toISOString() }));
 
-function clamp(value, min, max) {
-  return Math.max(min, Math.min(max, value));
-}
-
-function round(value, decimals = 1) {
-  const p = 10 ** decimals;
-  return Math.round(value * p) / p;
-}
-
-function randomBetween(min, max) {
-  return min + Math.random() * (max - min);
-}
-
-function randomToken(bytes = 18) {
-  return crypto.randomBytes(bytes).toString('base64url');
-}
-
-function chooseWeightedType() {
-  const entries = Object.entries(SHEEP_TYPES);
-  const total = entries.reduce((sum, [, data]) => sum + data.weight, 0);
-  let roll = Math.random() * total;
-  for (const [key, data] of entries) {
-    roll -= data.weight;
-    if (roll <= 0) return key;
-  }
-  return entries[0][0];
-}
+function clamp(value, min, max) { return Math.max(min, Math.min(max, value)); }
+function round(value, decimals = 1) { const p = 10 ** decimals; return Math.round(value * p) / p; }
+function randomBetween(min, max) { return min + Math.random() * (max - min); }
+function randomToken(bytes = 18) { return crypto.randomBytes(bytes).toString('base64url'); }
+function randomErrorPct() { return round(randomBetween(-CONFIG.actionVariancePct, CONFIG.actionVariancePct), 1); }
 
 function getLanAddress() {
-  const interfaces = os.networkInterfaces();
-  for (const addresses of Object.values(interfaces)) {
+  for (const addresses of Object.values(os.networkInterfaces())) {
     for (const address of addresses || []) {
       if (address.family === 'IPv4' && !address.internal) return address.address;
     }
@@ -176,45 +128,41 @@ function getPublicBaseUrl(socket) {
   if (origin && /^https?:\/\//i.test(origin)) {
     try {
       const parsed = new URL(origin);
-      if (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1' || parsed.hostname === '::1') {
-        const port = parsed.port || String(CONFIG.port);
-        return `${parsed.protocol}//${getLanAddress()}:${port}`;
+      if (['localhost', '127.0.0.1', '::1'].includes(parsed.hostname)) {
+        return `${parsed.protocol}//${getLanAddress()}:${parsed.port || CONFIG.port}`;
       }
       return origin.replace(/\/$/, '');
-    } catch (_) {
-      // Fall through to headers and LAN detection.
-    }
+    } catch (_) {}
   }
-  const forwardedProto = socket.handshake.headers['x-forwarded-proto'];
   const host = socket.handshake.headers.host;
-  if (host && !/^localhost(?::|$)|^127\.0\.0\.1(?::|$)/i.test(host)) return `${forwardedProto || 'http'}://${host}`;
+  const proto = socket.handshake.headers['x-forwarded-proto'] || 'http';
+  if (host && !/^localhost(?::|$)|^127\.0\.0\.1(?::|$)/i.test(host)) return `${proto}://${host}`;
   return `http://${getLanAddress()}:${CONFIG.port}`;
 }
 
 function generateRoomCode() {
-  for (let attempt = 0; attempt < 1000; attempt += 1) {
+  for (let i = 0; i < 1000; i += 1) {
     const code = String(Math.floor(1000 + Math.random() * 9000));
     if (!rooms.has(code)) return code;
   }
   throw new Error('Nie udało się utworzyć kodu pokoju.');
 }
 
-function createSheep(room, forcedType = null) {
-  const typeKey = forcedType || chooseWeightedType();
-  const type = SHEEP_TYPES[typeKey];
-  const bodyMass = round(randomBetween(type.mass[0], type.mass[1]), 1);
-  const fur = round(randomBetween(type.fur[0], type.fur[1]), 1);
-  const name = type.names[Math.floor(Math.random() * type.names.length)];
-  const serial = room.nextSheepId++;
+function flockById(id) { return FLOCKS.find((flock) => flock.id === id) || null; }
+function visualTier(level) { return level >= 4 ? 3 : level >= 2 ? 2 : 1; }
+function unitUpgradeKey(kind) { return kind === 'ram' ? 'ramTech' : kind === 'goat' ? 'goatTech' : 'sheepTech'; }
+
+function createUnit(room, kind = 'sheep') {
+  const def = UNIT_TYPES[kind] || UNIT_TYPES.sheep;
+  const serial = room.nextUnitId++;
   return {
-    id: `owca-${serial}`,
-    type: typeKey,
-    typeLabel: type.label,
-    name: `${name} #${serial}`,
-    bodyMass,
-    fur,
-    hp: type.hp,
-    maxHp: type.hp,
+    id: `jednostka-${serial}`,
+    kind,
+    kindLabel: def.label,
+    name: `${def.names[Math.floor(Math.random() * def.names.length)]} #${serial}`,
+    look: def.looks[Math.floor(Math.random() * def.looks.length)],
+    bodyMass: round(randomBetween(def.mass[0], def.mass[1]), 1),
+    fur: round(randomBetween(def.fur[0], def.fur[1]), 1),
     status: 'ready',
     availableAt: 0
   };
@@ -227,19 +175,17 @@ function createGamePlayer(room, player) {
     wool: CONFIG.startingWool,
     baseHp: CONFIG.baseHp,
     baseMaxHp: CONFIG.baseHp,
-    glory: 0,
+    glory: 20,
     totalDamage: 0,
     shots: 0,
     hits: 0,
-    sheep: [createSheep(room, 'zez'), createSheep(room, 'puszek')],
-    upgrades: {
-      fertilizer: 0,
-      shampoo: 0,
-      catapult: 0,
-      fort: 0
-    },
+    unitsBought: 2,
+    unitsLost: 0,
+    units: [createUnit(room, 'sheep'), createUnit(room, 'sheep')],
+    upgrades: { fertilizer: 0, shampoo: 0, catapult: 0, fort: 0, repair: 0, sheepTech: 0, ramTech: 0, goatTech: 0 },
     catapultReadyAt: 0,
-    lastActionAt: 0
+    repairReadyAt: 0,
+    lastHitAt: 0
   };
 }
 
@@ -252,7 +198,7 @@ function createRoom(displaySocket) {
     phase: 'lobby',
     createdAt: Date.now(),
     players: [null, null],
-    nextSheepId: 1,
+    nextUnitId: 1,
     nextShotId: 1,
     game: null,
     prologueTimer: null,
@@ -267,36 +213,17 @@ function createRoom(displaySocket) {
   return room;
 }
 
-function appendLog(room, text) {
-  room.logs.push({ time: Date.now(), text });
-  if (room.logs.length > 250) room.logs.shift();
-}
-
-function findPlayerBySocket(room, socketId) {
-  return room.players.find((player) => player && player.socketId === socketId) || null;
-}
-
-function findPlayerByToken(room, token) {
-  return room.players.find((player) => player && player.token === token) || null;
-}
-
+function appendLog(room, text) { room.logs.push({ time: Date.now(), text }); if (room.logs.length > 300) room.logs.shift(); }
+function findPlayerBySocket(room, socketId) { return room.players.find((p) => p && p.socketId === socketId) || null; }
+function findPlayerByToken(room, token) { return room.players.find((p) => p && p.token === token) || null; }
 function getAuthorizedRoom(socket, role = null) {
-  const code = socket.data.roomCode;
-  const room = code ? rooms.get(code) : null;
-  if (!room) return null;
-  if (role && socket.data.role !== role) return null;
+  const room = socket.data.roomCode ? rooms.get(socket.data.roomCode) : null;
+  if (!room || (role && socket.data.role !== role)) return null;
   return room;
 }
-
 function getAuthorizedPlayer(socket) {
   const room = getAuthorizedRoom(socket, 'player');
-  if (!room) return { room: null, player: null };
-  const player = findPlayerBySocket(room, socket.id);
-  return { room, player };
-}
-
-function flockById(id) {
-  return FLOCKS.find((flock) => flock.id === id) || null;
+  return { room, player: room ? findPlayerBySocket(room, socket.id) : null };
 }
 
 function roomLobbyState(room) {
@@ -304,34 +231,42 @@ function roomLobbyState(room) {
     code: room.code,
     phase: room.phase,
     players: room.players.map((player) => player ? {
-      slot: player.slot,
-      connected: player.connected,
-      flockId: player.flockId,
-      flockName: player.flockName,
-      emblem: player.emblem,
-      ready: player.ready
+      slot: player.slot, connected: player.connected, flockId: player.flockId,
+      flockName: player.flockName, emblem: player.emblem, ready: player.ready
     } : null),
-    canStart: room.players.every((player) => player && player.ready),
+    canStart: room.players.every((p) => p && p.ready),
     prologue: PROLOGUE
   };
 }
+function emitLobby(room) { io.to(room.code).emit('room:update', roomLobbyState(room)); }
 
-function emitLobby(room) {
-  io.to(room.code).emit('room:update', roomLobbyState(room));
-}
-
-function currentWeatherModifiers(weather) {
-  const type = weather.type;
+function weatherModifiers(weather) {
   return {
-    grass: type === 'rain' ? 1.16 : type === 'storm' ? 1.05 : type === 'sunny' ? 1.03 : 1,
-    fur: type === 'rain' ? 1.12 : type === 'storm' ? 1.08 : 1,
-    aeroPenalty: type === 'rain' ? 8 : type === 'storm' ? 12 : 0
+    grass: weather.type === 'rain' ? 1.2 : weather.type === 'storm' ? 1.08 : weather.type === 'sunny' ? 1.05 : 1,
+    fur: weather.type === 'rain' ? 1.12 : weather.type === 'storm' ? 1.08 : 1,
+    aeroPenalty: weather.type === 'rain' ? 7 : weather.type === 'storm' ? 12 : 0
   };
 }
 
+function unitAero(unit, weather, state) {
+  const def = UNIT_TYPES[unit.kind];
+  const tech = state?.upgrades?.[unitUpgradeKey(unit.kind)] || 0;
+  return clamp(98 - unit.fur * 4 + def.aeroBonus + tech * 2 - weatherModifiers(weather).aeroPenalty, 20, 100);
+}
+function unitTotalMass(unit, weather) {
+  const wet = weather.type === 'rain' ? 1.12 : weather.type === 'storm' ? 1.2 : 1;
+  return unit.bodyMass + unit.fur * 0.58 * wet;
+}
+function unitDamagePreview(unit, weather, state) {
+  const def = UNIT_TYPES[unit.kind];
+  const tech = state.upgrades[unitUpgradeKey(unit.kind)] || 0;
+  const mass = unitTotalMass(unit, weather);
+  return Math.round((185 + mass * 2.15 + unit.fur * 5) * def.damage * (1 + tech * 0.09) * (1 + state.upgrades.catapult * 0.035));
+}
+
 function publicGameState(room, now = Date.now()) {
+  if (!room.game) return null;
   const game = room.game;
-  if (!game) return null;
   const elapsedMs = Math.max(0, now - game.startedAt);
   const remainingMs = Math.max(0, CONFIG.matchDurationMs - elapsedMs);
   return {
@@ -340,15 +275,10 @@ function publicGameState(room, now = Date.now()) {
     elapsedMs,
     remainingMs,
     finalRush: remainingMs <= CONFIG.finalRushMs,
-    weather: {
-      sun: round(game.weather.sun, 0),
-      wind: round(game.weather.wind, 1),
-      type: game.weather.type,
-      nextChangeMs: Math.max(0, game.weather.nextChangeAt - now)
-    },
+    weather: { sun: round(game.weather.sun, 0), wind: round(game.weather.wind, 1), type: game.weather.type, nextChangeMs: Math.max(0, game.weather.nextChangeAt - now) },
     players: room.players.map((player, slot) => {
-      if (!player || !game.players[slot]) return null;
       const state = game.players[slot];
+      if (!player || !state) return null;
       return {
         slot,
         connected: player.connected,
@@ -356,92 +286,69 @@ function publicGameState(room, now = Date.now()) {
         emblem: player.emblem,
         baseHp: round(state.baseHp, 0),
         baseMaxHp: state.baseMaxHp,
-        glory: Math.floor(state.glory),
+        glory: round(state.glory, 0),
         totalDamage: Math.floor(state.totalDamage),
+        shots: state.shots,
+        hits: state.hits,
         upgrades: { ...state.upgrades },
-        sheep: state.sheep.map((sheep) => ({
-          id: sheep.id,
-          type: sheep.type,
-          fur: round(sheep.fur, 1),
-          hpRatio: round(sheep.hp / sheep.maxHp, 2),
-          status: sheep.status
-        }))
+        visualTiers: Object.fromEntries(Object.entries(state.upgrades).map(([key, level]) => [key, visualTier(level)])),
+        units: state.units.map((unit) => ({ id: unit.id, kind: unit.kind, look: unit.look, fur: round(unit.fur, 1), status: unit.status }))
       };
     })
   };
 }
 
-function sheepAero(sheep, weather) {
-  const type = SHEEP_TYPES[sheep.type];
-  const weatherPenalty = currentWeatherModifiers(weather).aeroPenalty;
-  return clamp(96 - sheep.fur * 4 + type.aeroBonus - weatherPenalty, 25, 100);
-}
-
-function sheepTotalMass(sheep, weather) {
-  const wetMultiplier = weather.type === 'rain' ? 1.12 : weather.type === 'storm' ? 1.18 : 1;
-  return sheep.bodyMass + sheep.fur * 0.55 * wetMultiplier;
-}
-
 function privateGameState(room, player, now = Date.now()) {
+  if (!room.game || !player) return null;
   const game = room.game;
-  if (!game || !player) return null;
   const state = game.players[player.slot];
-  const elapsedMs = Math.max(0, now - game.startedAt);
-  const remainingMs = Math.max(0, CONFIG.matchDurationMs - elapsedMs);
-  const sunFactor = 0.7 + (game.weather.sun / 100) * 0.7;
-  const weatherMods = currentWeatherModifiers(game.weather);
-  const grassRate = CONFIG.baseGrassPerSecond * sunFactor * weatherMods.grass * (1 + state.upgrades.fertilizer * 0.25) * (remainingMs <= CONFIG.finalRushMs ? 1.2 : 1);
+  const remainingMs = Math.max(0, CONFIG.matchDurationMs - (now - game.startedAt));
+  const sunFactor = 0.68 + (game.weather.sun / 100) * 0.72;
+  const mods = weatherModifiers(game.weather);
+  const grassRate = CONFIG.baseGrassPerSecond * sunFactor * mods.grass * (1 + state.upgrades.fertilizer * 0.18) * (remainingMs <= CONFIG.finalRushMs ? 1.25 : 1);
+  const repairLevel = state.upgrades.repair;
+  const repairCost = 45 + repairLevel * 12;
+  const repairAmount = 160 + repairLevel * 90;
+  const repairCooldown = Math.max(14000, 28000 - repairLevel * 2500);
   return {
     version: game.version,
     phase: room.phase,
     slot: player.slot,
     flockName: player.flockName,
     emblem: player.emblem,
-    resources: {
-      grass: round(state.grass, 1),
-      wool: round(state.wool, 1),
-      grassPerSecond: round(grassRate, 2),
-      sheepCount: state.sheep.length,
-      sheepLimit: CONFIG.sheepLimit
-    },
-    base: {
-      hp: round(state.baseHp, 0),
-      maxHp: state.baseMaxHp
-    },
-    weather: {
-      sun: round(game.weather.sun, 0),
-      wind: round(game.weather.wind, 1),
-      type: game.weather.type
-    },
+    resources: { grass: round(state.grass, 1), wool: round(state.wool, 1), grassPerSecond: round(grassRate, 2), unitCount: state.units.length, unitLimit: CONFIG.unitLimit, glory: round(state.glory, 0) },
+    base: { hp: round(state.baseHp, 0), maxHp: state.baseMaxHp, ratio: round(state.baseHp / state.baseMaxHp, 3) },
+    weather: { sun: round(game.weather.sun, 0), wind: round(game.weather.wind, 1), type: game.weather.type, nextChangeMs: Math.max(0, game.weather.nextChangeAt - now) },
     catapultCooldownMs: Math.max(0, state.catapultReadyAt - now),
+    repair: {
+      level: repairLevel,
+      cost: repairLevel > 0 ? repairCost : null,
+      amount: repairLevel > 0 ? repairAmount : 0,
+      cooldownMs: Math.max(0, state.repairReadyAt - now),
+      cooldownTotalMs: repairCooldown,
+      canUse: repairLevel > 0 && state.baseHp < state.baseMaxHp && state.wool >= repairCost && now >= state.repairReadyAt
+    },
     upgrades: { ...state.upgrades },
     upgradeCosts: Object.fromEntries(Object.entries(CONFIG.upgradeCosts).map(([key, costs]) => [key, costs[state.upgrades[key]] ?? null])),
-    sheepCost: CONFIG.sheepCost,
-    sheep: state.sheep.map((sheep) => ({
-      ...sheep,
-      bodyMass: round(sheep.bodyMass, 1),
-      fur: round(sheep.fur, 1),
-      totalMass: round(sheepTotalMass(sheep, game.weather), 1),
-      aero: round(sheepAero(sheep, game.weather), 0),
-      availableInMs: Math.max(0, sheep.availableAt - now)
+    unitTypes: Object.fromEntries(Object.entries(UNIT_TYPES).map(([key, def]) => [key, { label: def.label, cost: def.cost, icon: def.icon, damageFactor: def.damage, woolFactor: def.wool }])),
+    units: state.units.map((unit) => ({
+      ...unit,
+      bodyMass: round(unit.bodyMass, 1),
+      fur: round(unit.fur, 1),
+      totalMass: round(unitTotalMass(unit, game.weather), 1),
+      aero: round(unitAero(unit, game.weather, state), 0),
+      damagePreview: unitDamagePreview(unit, game.weather, state),
+      woolPotential: round(Math.max(0, unit.fur - CONFIG.minFurCm) * CONFIG.woolPerCm * UNIT_TYPES[unit.kind].wool * (1 + state.upgrades.shampoo * 0.08), 1),
+      availableInMs: Math.max(0, unit.availableAt - now)
     })),
-    stats: {
-      glory: Math.floor(state.glory),
-      shots: state.shots,
-      hits: state.hits,
-      accuracy: state.shots > 0 ? Math.round((state.hits / state.shots) * 100) : 0,
-      totalDamage: Math.floor(state.totalDamage)
-    },
+    stats: { glory: round(state.glory, 0), shots: state.shots, hits: state.hits, accuracy: state.shots ? Math.round((state.hits / state.shots) * 100) : 0, totalDamage: Math.floor(state.totalDamage), unitsBought: state.unitsBought, unitsLost: state.unitsLost },
     remainingMs,
-    finalRush: remainingMs <= CONFIG.finalRushMs
+    finalRush: remainingMs <= CONFIG.finalRushMs,
+    rules: { variancePct: CONFIG.actionVariancePct, damageGloryPer100: Math.round(CONFIG.damageGloryPerHp * 100) }
   };
 }
 
-function emitPrivateState(room, player, now = Date.now()) {
-  if (!player?.socketId) return;
-  io.to(player.socketId).emit('game:private', privateGameState(room, player, now));
-}
-
+function emitPrivateState(room, player, now = Date.now()) { if (player?.socketId) io.to(player.socketId).emit('game:private', privateGameState(room, player, now)); }
 function emitGameState(room, now = Date.now()) {
   if (!room.game) return;
   io.to(room.code).emit('game:public', publicGameState(room, now));
@@ -450,32 +357,17 @@ function emitGameState(room, now = Date.now()) {
 
 function rollWeather(game, now) {
   const roll = Math.random();
-  let type;
-  if (roll < 0.4) type = 'sunny';
-  else if (roll < 0.7) type = 'cloudy';
-  else if (roll < 0.91) type = 'rain';
-  else type = 'storm';
-
+  const type = roll < 0.32 ? 'sunny' : roll < 0.58 ? 'cloudy' : roll < 0.83 ? 'rain' : 'storm';
   let sunTarget;
   let windTarget;
-  if (type === 'sunny') {
-    sunTarget = randomBetween(70, 100);
-    windTarget = randomBetween(-4.5, 4.5);
-  } else if (type === 'cloudy') {
-    sunTarget = randomBetween(42, 72);
-    windTarget = randomBetween(-6, 6);
-  } else if (type === 'rain') {
-    sunTarget = randomBetween(25, 55);
-    windTarget = randomBetween(-7, 7);
-  } else {
-    sunTarget = randomBetween(15, 42);
-    windTarget = (Math.random() < 0.5 ? -1 : 1) * randomBetween(6, 9.5);
-  }
-
+  if (type === 'sunny') { sunTarget = randomBetween(70, 100); windTarget = randomBetween(-10, 10); }
+  else if (type === 'cloudy') { sunTarget = randomBetween(42, 75); windTarget = randomBetween(-14, 14); }
+  else if (type === 'rain') { sunTarget = randomBetween(24, 58); windTarget = randomBetween(-18, 18); }
+  else { sunTarget = randomBetween(12, 42); windTarget = (Math.random() < 0.5 ? -1 : 1) * randomBetween(15, 24); }
   game.weather.type = type;
   game.weather.targetSun = sunTarget;
   game.weather.targetWind = windTarget;
-  game.weather.nextChangeAt = now + randomBetween(24000, 34000);
+  game.weather.nextChangeAt = now + randomBetween(10000, 17000);
   game.version += 1;
 }
 
@@ -487,28 +379,20 @@ function initializeGame(room) {
     lastPublicBroadcastAt: 0,
     lastPrivateBroadcastAt: 0,
     version: 1,
-    weather: {
-      type: 'sunny',
-      sun: 72,
-      targetSun: 72,
-      wind: 0,
-      targetWind: 0,
-      nextChangeAt: now + 28000
-    },
+    weather: { type: 'sunny', sun: 76, targetSun: 76, wind: randomBetween(-3, 3), targetWind: randomBetween(-3, 3), nextChangeAt: now + 12000 },
     players: room.players.map((player) => createGamePlayer(room, player)),
     activeShots: new Map(),
     finished: false
   };
-  for (const state of room.game.players) state.catapultReadyAt = now + 2600;
+  for (const state of room.game.players) state.catapultReadyAt = now + 2200;
 }
 
 function transitionToBattle(room) {
-  if (!room || room.phase === 'battle' || room.phase === 'finished') return;
+  if (!room || ['battle', 'finished'].includes(room.phase)) return;
   if (room.prologueTimer) clearTimeout(room.prologueTimer);
   room.prologueTimer = null;
   initializeGame(room);
   room.phase = 'battle';
-  appendLog(room, 'Rozpoczęto bitwę.');
   io.to(room.code).emit('phase:update', { phase: 'battle', countdown: 3 });
   emitLobby(room);
   emitGameState(room);
@@ -516,14 +400,9 @@ function transitionToBattle(room) {
 }
 
 function startPrologue(room) {
-  if (room.phase !== 'lobby') return false;
-  if (!room.players.every((player) => player && player.ready)) return false;
+  if (room.phase !== 'lobby' || !room.players.every((p) => p && p.ready)) return false;
   room.phase = 'prologue';
-  appendLog(room, 'Rozpoczęto prolog.');
-  io.to(room.code).emit('prologue:start', {
-    lines: PROLOGUE,
-    durationMs: CONFIG.prologueDurationMs
-  });
+  io.to(room.code).emit('prologue:start', { lines: PROLOGUE, durationMs: CONFIG.prologueDurationMs });
   emitLobby(room);
   room.prologueTimer = setTimeout(() => transitionToBattle(room), CONFIG.prologueDurationMs);
   return true;
@@ -535,16 +414,14 @@ function finishGame(room, reason, forcedWinnerSlot = undefined) {
   room.phase = 'finished';
   if (room.tickTimer) clearInterval(room.tickTimer);
   room.tickTimer = null;
-
   const [left, right] = room.game.players;
   let winnerSlot = forcedWinnerSlot;
   if (winnerSlot === undefined) {
-    if (left.baseHp !== right.baseHp) winnerSlot = left.baseHp > right.baseHp ? 0 : 1;
+    if (left.glory !== right.glory) winnerSlot = left.glory > right.glory ? 0 : 1;
+    else if (left.baseHp !== right.baseHp) winnerSlot = left.baseHp > right.baseHp ? 0 : 1;
     else if (left.totalDamage !== right.totalDamage) winnerSlot = left.totalDamage > right.totalDamage ? 0 : 1;
-    else if (left.glory !== right.glory) winnerSlot = left.glory > right.glory ? 0 : 1;
     else winnerSlot = null;
   }
-
   const result = {
     reason,
     winnerSlot,
@@ -553,17 +430,17 @@ function finishGame(room, reason, forcedWinnerSlot = undefined) {
       flockName: player?.flockName || `Gracz ${slot + 1}`,
       emblem: player?.emblem || '🐑',
       baseHp: Math.max(0, Math.round(room.game.players[slot].baseHp)),
-      glory: Math.floor(room.game.players[slot].glory),
+      baseMaxHp: Math.round(room.game.players[slot].baseMaxHp),
+      glory: Math.round(room.game.players[slot].glory),
       shots: room.game.players[slot].shots,
       hits: room.game.players[slot].hits,
-      damage: Math.floor(room.game.players[slot].totalDamage)
+      damage: Math.floor(room.game.players[slot].totalDamage),
+      unitsBought: room.game.players[slot].unitsBought,
+      unitsLost: room.game.players[slot].unitsLost
     }))
   };
-
-  appendLog(room, `Koniec meczu: ${reason}.`);
   io.to(room.code).emit('game:finished', result);
   emitLobby(room);
-
   room.cleanupTimer = setTimeout(() => cleanupRoom(room.code), CONFIG.roomRetentionMs);
 }
 
@@ -571,169 +448,118 @@ function tickRoom(room) {
   if (!room.game || room.phase !== 'battle') return;
   const now = Date.now();
   const game = room.game;
-  const dtMs = clamp(now - game.lastTickAt, 0, 500);
-  const dt = dtMs / 1000;
+  const dt = clamp(now - game.lastTickAt, 0, 500) / 1000;
   game.lastTickAt = now;
-
   if (now >= game.weather.nextChangeAt) rollWeather(game, now);
-  const weatherLerp = clamp(dt / 6, 0, 1);
-  game.weather.sun += (game.weather.targetSun - game.weather.sun) * weatherLerp;
-  game.weather.wind += (game.weather.targetWind - game.weather.wind) * weatherLerp;
-
-  const elapsedMs = now - game.startedAt;
-  const remainingMs = Math.max(0, CONFIG.matchDurationMs - elapsedMs);
+  const lerp = clamp(dt / 2.2, 0, 1);
+  game.weather.sun += (game.weather.targetSun - game.weather.sun) * lerp;
+  game.weather.wind += (game.weather.targetWind - game.weather.wind) * lerp;
+  const remainingMs = Math.max(0, CONFIG.matchDurationMs - (now - game.startedAt));
   const finalRush = remainingMs <= CONFIG.finalRushMs;
-  const weatherMods = currentWeatherModifiers(game.weather);
-  const sunFactor = 0.7 + (game.weather.sun / 100) * 0.7;
-
+  const mods = weatherModifiers(game.weather);
+  const sunFactor = 0.68 + (game.weather.sun / 100) * 0.72;
   for (const state of game.players) {
-    const grassRate = CONFIG.baseGrassPerSecond * sunFactor * weatherMods.grass * (1 + state.upgrades.fertilizer * 0.25) * (finalRush ? 1.2 : 1);
-    state.grass = clamp(state.grass + grassRate * dt, 0, 999);
-
-    for (const sheep of state.sheep) {
-      if (sheep.status === 'recovering' || sheep.status === 'shearing') {
-        if (now >= sheep.availableAt) {
-          sheep.status = 'ready';
-          sheep.availableAt = 0;
-        }
-      }
-      if (sheep.status !== 'flying') {
-        const type = SHEEP_TYPES[sheep.type];
-        const growth = CONFIG.baseFurGrowthPerSecond * type.furGrowth * weatherMods.fur * (1 + state.upgrades.shampoo * 0.3);
-        sheep.fur = clamp(sheep.fur + growth * dt, CONFIG.minFurCm, type.furMax);
+    const grassRate = CONFIG.baseGrassPerSecond * sunFactor * mods.grass * (1 + state.upgrades.fertilizer * 0.18) * (finalRush ? 1.25 : 1);
+    state.grass = clamp(state.grass + grassRate * dt, 0, 2500);
+    for (const unit of state.units) {
+      if (unit.status === 'shearing' && now >= unit.availableAt) { unit.status = 'ready'; unit.availableAt = 0; }
+      if (unit.status !== 'shearing') {
+        const def = UNIT_TYPES[unit.kind];
+        unit.fur = clamp(unit.fur + CONFIG.baseFurGrowthPerSecond * def.furGrowth * mods.fur * (1 + state.upgrades.shampoo * 0.18) * dt, CONFIG.minFurCm, def.furMax);
       }
     }
+    const repairLevel = state.upgrades.repair;
+    if (repairLevel > 0 && state.baseHp < state.baseMaxHp && now - state.lastHitAt > 6000 && state.wool > 0.05) {
+      const hpGain = Math.min((0.45 + repairLevel * 0.48) * dt, state.baseMaxHp - state.baseHp);
+      const woolCost = hpGain / 25;
+      if (state.wool >= woolCost) { state.baseHp += hpGain; state.wool -= woolCost; }
+    }
   }
-
-  if (remainingMs <= 0) {
-    finishGame(room, 'Koniec czasu');
-    return;
-  }
-
+  if (remainingMs <= 0) { finishGame(room, 'Koniec czasu - wygrywa Chwała'); return; }
   game.version += 1;
-  if (now - game.lastPublicBroadcastAt >= CONFIG.publicBroadcastMs) {
-    io.to(room.code).emit('game:public', publicGameState(room, now));
-    game.lastPublicBroadcastAt = now;
-  }
-  if (now - game.lastPrivateBroadcastAt >= CONFIG.privateBroadcastMs) {
-    for (const player of room.players) emitPrivateState(room, player, now);
-    game.lastPrivateBroadcastAt = now;
-  }
+  if (now - game.lastPublicBroadcastAt >= CONFIG.publicBroadcastMs) { io.to(room.code).emit('game:public', publicGameState(room, now)); game.lastPublicBroadcastAt = now; }
+  if (now - game.lastPrivateBroadcastAt >= CONFIG.privateBroadcastMs) { for (const player of room.players) emitPrivateState(room, player, now); game.lastPrivateBroadcastAt = now; }
 }
 
 function getBaseRect(slot) {
-  return slot === 0
-    ? { x1: 20, x2: 205, y1: 455, y2: 748, cx: 110 }
-    : { x1: 1395, x2: 1580, y1: 455, y2: 748, cx: 1490 };
+  return slot === 0 ? { x1: 10, x2: 225, y1: 455, y2: 760, cx: 115 } : { x1: 1375, x2: 1590, y1: 455, y2: 760, cx: 1485 };
+}
+function pointInRect(x, y, rect) { return x >= rect.x1 && x <= rect.x2 && y >= rect.y1 && y <= rect.y2; }
+function damageLimits(kind, splash) {
+  if (splash) return kind === 'ram' ? [70, 250] : kind === 'goat' ? [30, 100] : [45, 145];
+  return kind === 'ram' ? [360, 950] : kind === 'goat' ? [125, 350] : [190, 520];
 }
 
-function pointInRect(x, y, rect) {
-  return x >= rect.x1 && x <= rect.x2 && y >= rect.y1 && y <= rect.y2;
-}
-
-function simulateShot(room, shooterSlot, sheep, angleDeg, power) {
+function simulateShot(room, shooterSlot, unit, requestedAngle, requestedPower, angleErrorPct = 0, powerErrorPct = 0) {
   const game = room.game;
   const shooterState = game.players[shooterSlot];
   const side = shooterSlot === 0 ? 1 : -1;
-  const launch = shooterSlot === 0 ? { x: 250, y: 700 } : { x: 1350, y: 700 };
-  const angle = angleDeg * Math.PI / 180;
-  const mass = sheepTotalMass(sheep, game.weather);
-  const aero = sheepAero(sheep, game.weather);
-  const type = SHEEP_TYPES[sheep.type];
-  const speed = 400 + (power - 40) * 3.15 + shooterState.upgrades.catapult * 14;
+  const launch = shooterSlot === 0 ? { x: 245, y: 710 } : { x: 1355, y: 710 };
+  const actualAngle = clamp(requestedAngle * (1 + angleErrorPct / 100), 15, 75);
+  const actualPower = clamp(requestedPower * (1 + powerErrorPct / 100), 40, 100);
+  const angle = actualAngle * Math.PI / 180;
+  const mass = unitTotalMass(unit, game.weather);
+  const aero = unitAero(unit, game.weather, shooterState);
+  const def = UNIT_TYPES[unit.kind];
+  const speed = (410 + (actualPower - 40) * 4.4) * (1 + shooterState.upgrades.catapult * 0.05);
   let x = launch.x;
   let y = launch.y;
   let vx = side * Math.cos(angle) * speed;
   let vy = -Math.sin(angle) * speed;
-  const gravity = 245;
-  const dragPerSecond = 0.015 + (100 - aero) * 0.00055;
-  const windAcceleration = game.weather.wind * 2.8 * (0.55 + (100 - aero) / 80) * (65 / mass);
+  const gravity = 260;
+  const dragPerSecond = 0.012 + (100 - aero) * 0.00068;
+  const windAcceleration = game.weather.wind * 4.5 * (0.65 + (100 - aero) / 58) * (70 / mass);
   const dt = 1 / 60;
-  const maxTime = 7.5;
-  const groundY = 748;
+  const maxTime = 7.6;
+  const groundY = 760;
   const pathPoints = [];
   const targetSlot = shooterSlot === 0 ? 1 : 0;
   const targetRect = getBaseRect(targetSlot);
   const ownRect = getBaseRect(shooterSlot);
   let impact = null;
-
   for (let frame = 0; frame <= maxTime / dt; frame += 1) {
     const t = frame * dt;
     if (frame % 2 === 0) pathPoints.push({ t: round(t, 3), x: round(x, 2), y: round(y, 2) });
-
-    if (frame > 2 && pointInRect(x, y, targetRect)) {
-      impact = { kind: 'base', hitSlot: targetSlot, x, y, t, ownGoal: false };
-      break;
-    }
-    if (frame > 2 && pointInRect(x, y, ownRect)) {
-      impact = { kind: 'base', hitSlot: shooterSlot, x, y, t, ownGoal: true };
-      break;
-    }
+    if (frame > 2 && pointInRect(x, y, targetRect)) { impact = { kind: 'base', hitSlot: targetSlot, x, y, t, ownGoal: false }; break; }
+    if (frame > 2 && pointInRect(x, y, ownRect)) { impact = { kind: 'base', hitSlot: shooterSlot, x, y, t, ownGoal: true }; break; }
     if (y >= groundY && frame > 2) {
-      const distanceToTarget = Math.abs(x - targetRect.cx);
-      const distanceToOwn = Math.abs(x - ownRect.cx);
-      if (distanceToTarget <= 135) {
-        impact = { kind: 'splash', hitSlot: targetSlot, x, y: groundY, t, ownGoal: false };
-      } else if (distanceToOwn <= 135) {
-        impact = { kind: 'splash', hitSlot: shooterSlot, x, y: groundY, t, ownGoal: true };
-      } else {
-        impact = { kind: 'ground', hitSlot: null, x, y: groundY, t, ownGoal: false };
-      }
+      const distTarget = Math.abs(x - targetRect.cx);
+      const distOwn = Math.abs(x - ownRect.cx);
+      impact = distTarget <= 170 ? { kind: 'splash', hitSlot: targetSlot, x, y: groundY, t, ownGoal: false }
+        : distOwn <= 170 ? { kind: 'splash', hitSlot: shooterSlot, x, y: groundY, t, ownGoal: true }
+          : { kind: 'ground', hitSlot: null, x, y: groundY, t, ownGoal: false };
       break;
     }
-    if (x < -150 || x > 1750 || y < -350) {
-      impact = { kind: 'lost', hitSlot: null, x, y, t, ownGoal: false };
-      break;
-    }
-
+    if (x < -180 || x > 1780 || y < -430) { impact = { kind: 'lost', hitSlot: null, x, y, t, ownGoal: false }; break; }
     const damping = Math.exp(-dragPerSecond * dt);
     vx = (vx + windAcceleration * dt) * damping;
     vy = (vy + gravity * dt) * Math.exp(-dragPerSecond * 0.35 * dt);
     x += vx * dt;
     y += vy * dt;
   }
-
   if (!impact) {
     const last = pathPoints[pathPoints.length - 1];
     impact = { kind: 'lost', hitSlot: null, x: last.x, y: last.y, t: last.t, ownGoal: false };
   }
-
   pathPoints.push({ t: round(impact.t, 3), x: round(impact.x, 2), y: round(impact.y, 2) });
   const impactSpeed = Math.sqrt(vx * vx + vy * vy);
   let damage = 0;
   if (impact.hitSlot !== null) {
-    const energy = (mass / 60) * (impactSpeed / 450);
-    damage = 48 + energy * 45 + sheep.fur * 1.6;
-    damage *= type.damage;
-    damage *= 1 + shooterState.upgrades.catapult * 0.08;
-    if ((CONFIG.matchDurationMs - (Date.now() - game.startedAt)) <= CONFIG.finalRushMs) damage *= 1.15;
-    damage *= 1 - game.players[impact.hitSlot].upgrades.fort * 0.09;
-    if (impact.kind === 'splash') damage *= 0.28;
+    const tech = shooterState.upgrades[unitUpgradeKey(unit.kind)] || 0;
+    const energy = (mass / 65) * (impactSpeed / 480);
+    damage = (165 + energy * 160 + unit.fur * 5.8) * def.damage * (1 + tech * 0.09) * (1 + shooterState.upgrades.catapult * 0.035);
+    if (CONFIG.matchDurationMs - (Date.now() - game.startedAt) <= CONFIG.finalRushMs) damage *= 1.18;
+    damage *= 1 - game.players[impact.hitSlot].upgrades.fort * 0.035;
+    if (impact.kind === 'splash') damage *= 0.27;
     if (impact.ownGoal) damage *= 0.62;
-    damage = Math.round(clamp(damage, impact.kind === 'splash' ? 15 : 38, impact.kind === 'splash' ? 52 : 175));
+    const [min, max] = damageLimits(unit.kind, impact.kind === 'splash');
+    damage = Math.round(clamp(damage, min, max));
   }
-
-  const selfDamageMultiplier = impact.kind === 'base' ? 1 : impact.kind === 'splash' ? 0.85 : 0.7;
-  const selfDamage = Math.round(clamp((16 + impactSpeed / 28) * selfDamageMultiplier, 18, 58));
-
   return {
     path: pathPoints,
-    durationMs: Math.max(350, Math.round(impact.t * 1000)),
-    impact: {
-      ...impact,
-      x: round(impact.x, 1),
-      y: round(impact.y, 1),
-      speed: round(impactSpeed, 1),
-      damage,
-      selfDamage
-    },
-    flight: {
-      mass: round(mass, 1),
-      aero: round(aero, 0),
-      wind: round(game.weather.wind, 1),
-      angle: round(angleDeg, 1),
-      power: round(power, 0)
-    }
+    durationMs: Math.max(380, Math.round(impact.t * 1000)),
+    impact: { ...impact, x: round(impact.x, 1), y: round(impact.y, 1), speed: round(impactSpeed, 1), damage },
+    flight: { mass: round(mass, 1), aero: round(aero, 0), wind: round(game.weather.wind, 1), requestedAngle: round(requestedAngle, 1), requestedPower: round(requestedPower, 0), actualAngle: round(actualAngle, 1), actualPower: round(actualPower, 0), angleErrorPct, powerErrorPct }
   };
 }
 
@@ -742,63 +568,32 @@ function handleShotImpact(room, shotId) {
   const shot = room.game.activeShots.get(shotId);
   if (!shot) return;
   room.game.activeShots.delete(shotId);
-
   const shooterState = room.game.players[shot.shooterSlot];
-  const sheep = shooterState.sheep.find((item) => item.id === shot.sheepId);
-  if (!sheep) return;
-
   const impact = shot.simulation.impact;
   let message;
+  let gloryGain = 0;
   if (impact.hitSlot !== null) {
     const victim = room.game.players[impact.hitSlot];
     victim.baseHp = clamp(victim.baseHp - impact.damage, 0, victim.baseMaxHp);
+    victim.lastHitAt = Date.now();
     if (!impact.ownGoal) {
       shooterState.hits += 1;
       shooterState.totalDamage += impact.damage;
-      shooterState.glory += impact.damage / 10;
+      gloryGain = round(impact.damage * CONFIG.damageGloryPerHp, 1);
+      shooterState.glory += gloryGain;
     }
-
-    if (impact.ownGoal) {
-      message = `OWCZY SAMOBÓJ! ${room.players[shot.shooterSlot].flockName} trafia własną bazę za ${impact.damage}.`;
-    } else if (impact.kind === 'splash') {
-      message = `Prawie! Chmura ziemi drapie bazę za ${impact.damage}.`;
-    } else {
-      message = `TRAFIENIE! ${sheep.name} zadaje ${impact.damage} obrażeń.`;
-    }
-  } else if (impact.kind === 'lost') {
-    message = `${sheep.name} odkrywa nowe pastwiska poza ekranem.`;
-  } else {
-    message = `${sheep.name} wbija się w trawę. Trawa wygrywa.`;
-  }
-
-  sheep.hp = clamp(sheep.hp - impact.selfDamage, 0, sheep.maxHp);
-  if (sheep.hp <= 0) {
-    const index = shooterState.sheep.findIndex((item) => item.id === sheep.id);
-    if (index >= 0) shooterState.sheep.splice(index, 1);
-    message += ' Owca przechodzi na zasłużony urlop rehabilitacyjny.';
-  } else {
-    sheep.status = 'recovering';
-    sheep.availableAt = Date.now() + CONFIG.recoveryMs;
-  }
-
+    message = impact.ownGoal ? `OWCZY AUTOGOL! ${shot.unit.name} trafia własną bazę za ${impact.damage}.`
+      : impact.kind === 'splash' ? `PRAWIE TRAFIENIE! Chmura ziemi zadaje ${impact.damage} obrażeń i ${gloryGain} Chwały.`
+        : `TRAFIENIE! ${shot.unit.name} zadaje ${impact.damage} obrażeń i zdobywa ${gloryGain} Chwały.`;
+  } else if (impact.kind === 'lost') message = `${shot.unit.name} odkrywa nowe pastwiska poza ekranem. Misja uznana za „eksploracyjną”.`;
+  else message = `${shot.unit.name} wbija się w trawę. Trawa wygrywa bezapelacyjnie.`;
   room.game.version += 1;
-  appendLog(room, message);
-  io.to(room.code).emit('shot:impact', {
-    shotId,
-    shooterSlot: shot.shooterSlot,
-    sheepId: shot.sheepId,
-    sheepType: shot.sheepType,
-    impact,
-    message
-  });
+  io.to(room.code).emit('shot:impact', { shotId, shooterSlot: shot.shooterSlot, unit: shot.unit, impact, gloryGain, cloudRise: impact.hitSlot !== null, message });
   io.to(room.code).emit('toast', { message, tone: impact.hitSlot !== null ? 'impact' : 'funny' });
   emitGameState(room);
-
   const [left, right] = room.game.players;
   if (left.baseHp <= 0 || right.baseHp <= 0) {
-    let winnerSlot;
-    if (left.baseHp <= 0 && right.baseHp <= 0) winnerSlot = left.totalDamage >= right.totalDamage ? 0 : 1;
-    else winnerSlot = left.baseHp > 0 ? 0 : 1;
+    const winnerSlot = left.baseHp <= 0 && right.baseHp <= 0 ? (left.totalDamage >= right.totalDamage ? 0 : 1) : left.baseHp > 0 ? 0 : 1;
     finishGame(room, 'Baza została zniszczona', winnerSlot);
   }
 }
@@ -811,10 +606,7 @@ function cleanupRoom(code) {
   if (room.cleanupTimer) clearTimeout(room.cleanupTimer);
   rooms.delete(code);
 }
-
-function ackSafe(ack, payload) {
-  if (typeof ack === 'function') ack(payload);
-}
+function ackSafe(ack, payload) { if (typeof ack === 'function') ack(payload); }
 
 io.on('connection', (socket) => {
   socket.on('display:create', async (_payload, ack) => {
@@ -824,77 +616,41 @@ io.on('connection', (socket) => {
       const room = createRoom(socket);
       const baseUrl = getPublicBaseUrl(socket);
       const joinUrl = `${baseUrl}/player.html?room=${room.code}`;
-      const qr = await QRCode.toDataURL(joinUrl, {
-        margin: 1,
-        width: 420,
-        color: { dark: '#142314', light: '#ffffff' }
-      });
+      const qr = await QRCode.toDataURL(joinUrl, { margin: 1, width: 420, color: { dark: '#142314', light: '#ffffff' } });
       ackSafe(ack, { ok: true, code: room.code, joinUrl, qr, displayToken: room.displayToken });
       emitLobby(room);
-    } catch (error) {
-      console.error(error);
-      ackSafe(ack, { ok: false, error: 'Nie udało się utworzyć wojny.' });
-    }
+    } catch (error) { ackSafe(ack, { ok: false, error: error.message || 'Nie udało się utworzyć pokoju.' }); }
   });
 
   socket.on('display:start', (_payload, ack) => {
     const room = getAuthorizedRoom(socket, 'display');
     if (!room) return ackSafe(ack, { ok: false, error: 'Brak pokoju.' });
-    if (!room.players.every((player) => player && player.ready)) {
-      return ackSafe(ack, { ok: false, error: 'Obaj gracze muszą być gotowi.' });
-    }
-    const started = startPrologue(room);
-    ackSafe(ack, started ? { ok: true } : { ok: false, error: 'Nie można teraz rozpocząć meczu.' });
+    if (!startPrologue(room)) return ackSafe(ack, { ok: false, error: 'Obaj gracze muszą być gotowi.' });
+    ackSafe(ack, { ok: true });
   });
-
   socket.on('display:skipPrologue', (_payload, ack) => {
     const room = getAuthorizedRoom(socket, 'display');
-    if (!room || room.phase !== 'prologue') return ackSafe(ack, { ok: false });
-    transitionToBattle(room);
-    ackSafe(ack, { ok: true });
+    if (!room) return ackSafe(ack, { ok: false });
+    transitionToBattle(room); ackSafe(ack, { ok: true });
   });
 
   socket.on('player:join', ({ code, token } = {}, ack) => {
-    const normalizedCode = String(code || '').trim();
-    const room = rooms.get(normalizedCode);
+    const room = rooms.get(String(code || '').trim());
     if (!room) return ackSafe(ack, { ok: false, error: 'Nie znaleziono takiej wojny.' });
-
     let player = token ? findPlayerByToken(room, token) : null;
-    if (player) {
-      player.socketId = socket.id;
-      player.connected = true;
-    } else {
+    if (player) { player.socketId = socket.id; player.connected = true; }
+    else {
       if (room.phase !== 'lobby') return ackSafe(ack, { ok: false, error: 'Ta wojna już trwa.' });
       const freeSlot = room.players.findIndex((item) => item === null);
       if (freeSlot === -1) return ackSafe(ack, { ok: false, error: 'Oba pastwiska są już zajęte.' });
-      player = {
-        slot: freeSlot,
-        socketId: socket.id,
-        token: randomToken(),
-        connected: true,
-        flockId: null,
-        flockName: null,
-        emblem: '🐑',
-        ready: false
-      };
+      player = { slot: freeSlot, socketId: socket.id, token: randomToken(), connected: true, flockId: null, flockName: null, emblem: '🐑', ready: false };
       room.players[freeSlot] = player;
-      appendLog(room, `Dołączył Gracz ${freeSlot + 1}.`);
     }
-
     socket.join(room.code);
     socket.data.role = 'player';
     socket.data.roomCode = room.code;
     socket.data.playerToken = player.token;
-
-    ackSafe(ack, {
-      ok: true,
-      token: player.token,
-      slot: player.slot,
-      phase: room.phase,
-      flocks: FLOCKS,
-      selectedFlockId: player.flockId,
-      ready: player.ready
-    });
+    ackSafe(ack, { ok: true, token: player.token, slot: player.slot, phase: room.phase, flocks: FLOCKS, selectedFlockId: player.flockId, ready: player.ready });
     emitLobby(room);
     if (room.game) emitPrivateState(room, player);
   });
@@ -905,151 +661,131 @@ io.on('connection', (socket) => {
     if (room.phase !== 'lobby') return ackSafe(ack, { ok: false, error: 'Wybór stada jest już zamknięty.' });
     const flock = flockById(flockId);
     if (!flock) return ackSafe(ack, { ok: false, error: 'Nieznane stado.' });
-    player.flockId = flock.id;
-    player.flockName = flock.name;
-    player.emblem = flock.emblem;
-    player.ready = false;
-    emitLobby(room);
-    ackSafe(ack, { ok: true, flock });
+    Object.assign(player, { flockId: flock.id, flockName: flock.name, emblem: flock.emblem, ready: false });
+    emitLobby(room); ackSafe(ack, { ok: true, flock });
   });
-
   socket.on('player:ready', ({ ready = true } = {}, ack) => {
     const { room, player } = getAuthorizedPlayer(socket);
     if (!room || !player) return ackSafe(ack, { ok: false, error: 'Brak gracza.' });
     if (room.phase !== 'lobby') return ackSafe(ack, { ok: false, error: 'Wojna już się zaczęła.' });
     if (!player.flockId) return ackSafe(ack, { ok: false, error: 'Najpierw wybierz stado.' });
-    player.ready = Boolean(ready);
-    emitLobby(room);
-    ackSafe(ack, { ok: true, ready: player.ready });
+    player.ready = Boolean(ready); emitLobby(room); ackSafe(ack, { ok: true, ready: player.ready });
   });
 
-  socket.on('player:buySheep', (_payload, ack) => {
+  socket.on('player:buyUnit', ({ kind = 'sheep' } = {}, ack) => {
     const { room, player } = getAuthorizedPlayer(socket);
     if (!room || !player || room.phase !== 'battle' || !room.game) return ackSafe(ack, { ok: false, error: 'Zakup jest teraz niedostępny.' });
+    const def = UNIT_TYPES[kind];
+    if (!def) return ackSafe(ack, { ok: false, error: 'Nieznany rodzaj jednostki.' });
     const state = room.game.players[player.slot];
-    if (state.sheep.length >= CONFIG.sheepLimit) return ackSafe(ack, { ok: false, error: 'Pastwisko jest pełne.' });
-    if (state.grass < CONFIG.sheepCost) return ackSafe(ack, { ok: false, error: 'Za mało trawy.' });
-    state.grass -= CONFIG.sheepCost;
-    const sheep = createSheep(room);
-    state.sheep.push(sheep);
+    if (state.units.length >= CONFIG.unitLimit) return ackSafe(ack, { ok: false, error: 'Pastwisko jest pełne. Limit to 20 jednostek.' });
+    if (state.grass < def.cost) return ackSafe(ack, { ok: false, error: 'Za mało trawy.' });
+    state.grass -= def.cost;
+    const unit = createUnit(room, kind);
+    state.units.push(unit);
+    state.unitsBought += 1;
+    state.glory += def.purchaseGlory;
     room.game.version += 1;
-    const message = `${sheep.name} dołącza do stada. Waży ${sheep.bodyMass} kg i wygląda na zaskoczoną.`;
-    io.to(socket.id).emit('toast', { message, tone: 'success' });
     emitGameState(room);
-    ackSafe(ack, { ok: true, sheep });
+    ackSafe(ack, { ok: true, unit, gloryGain: def.purchaseGlory });
   });
 
-  socket.on('player:shear', ({ sheepId, targetFur } = {}, ack) => {
+  socket.on('player:shear', ({ unitId, targetFur } = {}, ack) => {
     const { room, player } = getAuthorizedPlayer(socket);
     if (!room || !player || room.phase !== 'battle' || !room.game) return ackSafe(ack, { ok: false, error: 'Strzyżenie jest teraz niedostępne.' });
     const state = room.game.players[player.slot];
-    const sheep = state.sheep.find((item) => item.id === sheepId);
-    if (!sheep) return ackSafe(ack, { ok: false, error: 'Nie znaleziono owcy.' });
-    if (sheep.status !== 'ready') return ackSafe(ack, { ok: false, error: 'Ta owca jest zajęta.' });
-    const target = clamp(Number(targetFur), CONFIG.minFurCm, sheep.fur);
-    const removed = sheep.fur - target;
+    const unit = state.units.find((item) => item.id === unitId);
+    if (!unit || unit.status !== 'ready') return ackSafe(ack, { ok: false, error: 'Ta jednostka jest zajęta lub nie istnieje.' });
+    const target = clamp(Number(targetFur), CONFIG.minFurCm, unit.fur);
+    const removed = unit.fur - target;
     if (removed < 0.2) return ackSafe(ack, { ok: false, error: 'Nie ma czego strzyc.' });
-    const type = SHEEP_TYPES[sheep.type];
-    const gained = round(removed * CONFIG.woolPerCm * type.wool, 1);
-    sheep.fur = round(target, 1);
-    sheep.status = 'shearing';
-    sheep.availableAt = Date.now() + 1200;
-    state.wool = clamp(state.wool + gained, 0, 999);
+    const def = UNIT_TYPES[unit.kind];
+    const gained = round(removed * CONFIG.woolPerCm * def.wool * (1 + state.upgrades.shampoo * 0.08), 1);
+    unit.fur = round(target, 1);
+    unit.status = 'shearing';
+    unit.availableAt = Date.now() + 1050;
+    state.wool = clamp(state.wool + gained, 0, 3000);
     room.game.version += 1;
-    const message = `${sheep.name}: +${gained} wełny. Fryzura: strategicznie krótka.`;
-    io.to(socket.id).emit('toast', { message, tone: 'success' });
     emitGameState(room);
-    ackSafe(ack, { ok: true, gained, fur: sheep.fur });
+    ackSafe(ack, { ok: true, gained, fur: unit.fur });
   });
 
   socket.on('player:upgrade', ({ upgrade } = {}, ack) => {
     const { room, player } = getAuthorizedPlayer(socket);
     if (!room || !player || room.phase !== 'battle' || !room.game) return ackSafe(ack, { ok: false, error: 'Ulepszenia są teraz niedostępne.' });
+    const costs = CONFIG.upgradeCosts[upgrade];
+    if (!costs) return ackSafe(ack, { ok: false, error: 'Nieznane ulepszenie.' });
     const state = room.game.players[player.slot];
-    if (!Object.prototype.hasOwnProperty.call(CONFIG.upgradeCosts, upgrade)) return ackSafe(ack, { ok: false, error: 'Nieznane ulepszenie.' });
     const level = state.upgrades[upgrade];
-    if (level >= 3) return ackSafe(ack, { ok: false, error: 'Maksymalny poziom.' });
-    const cost = CONFIG.upgradeCosts[upgrade][level];
+    if (level >= 5) return ackSafe(ack, { ok: false, error: 'Maksymalny poziom to 5.' });
+    const cost = costs[level];
     if (state.wool < cost) return ackSafe(ack, { ok: false, error: 'Za mało wełny.' });
     state.wool -= cost;
     state.upgrades[upgrade] += 1;
-    if (upgrade === 'fort') {
-      state.baseMaxHp += 120;
-      state.baseHp = clamp(state.baseHp + 120, 0, state.baseMaxHp);
-    }
+    if (upgrade === 'fort') { state.baseMaxHp += 150; state.baseHp = clamp(state.baseHp + 150, 0, state.baseMaxHp); }
     room.game.version += 1;
-    const labels = {
-      fertilizer: 'Magiczna Mikstura do Trawki',
-      shampoo: 'Szampon Turbo-Wool',
-      catapult: 'Katapulta po Tuningu',
-      fort: 'Płot, Który Udaje Mur'
-    };
-    const message = `${labels[upgrade]} osiąga poziom ${state.upgrades[upgrade]}. Nauka poszła za daleko.`;
-    io.to(room.code).emit('toast', { message, tone: 'upgrade', slot: player.slot });
+    io.to(room.code).emit('toast', { message: `${UPGRADE_LABELS[upgrade]} osiąga poziom ${state.upgrades[upgrade]}.`, tone: 'upgrade', slot: player.slot });
     emitGameState(room);
-    ackSafe(ack, { ok: true, level: state.upgrades[upgrade], cost });
+    ackSafe(ack, { ok: true, level: state.upgrades[upgrade], cost, visualTier: visualTier(state.upgrades[upgrade]) });
   });
 
-  socket.on('player:fire', ({ sheepId, angle, power } = {}, ack) => {
+  socket.on('player:repairBase', (_payload, ack) => {
+    const { room, player } = getAuthorizedPlayer(socket);
+    if (!room || !player || room.phase !== 'battle' || !room.game) return ackSafe(ack, { ok: false, error: 'Naprawa jest teraz niedostępna.' });
+    const state = room.game.players[player.slot];
+    const level = state.upgrades.repair;
+    if (level <= 0) return ackSafe(ack, { ok: false, error: 'Najpierw zbuduj Warsztat Naprawczy.' });
+    const now = Date.now();
+    if (now < state.repairReadyAt) return ackSafe(ack, { ok: false, error: 'Mechanicy nadal szukają właściwego młotka.' });
+    if (state.baseHp >= state.baseMaxHp) return ackSafe(ack, { ok: false, error: 'Baza jest już w idealnym stanie.' });
+    const cost = 45 + level * 12;
+    const amount = 160 + level * 90;
+    if (state.wool < cost) return ackSafe(ack, { ok: false, error: 'Za mało wełny na naprawę.' });
+    state.wool -= cost;
+    const repaired = Math.min(amount, state.baseMaxHp - state.baseHp);
+    state.baseHp += repaired;
+    state.repairReadyAt = now + Math.max(14000, 28000 - level * 2500);
+    room.game.version += 1;
+    io.to(room.code).emit('repair:effect', { slot: player.slot, amount: Math.round(repaired) });
+    emitGameState(room);
+    ackSafe(ack, { ok: true, repaired: Math.round(repaired), cost });
+  });
+
+  socket.on('player:fire', ({ unitId, angle, power } = {}, ack) => {
     const { room, player } = getAuthorizedPlayer(socket);
     if (!room || !player || room.phase !== 'battle' || !room.game) return ackSafe(ack, { ok: false, error: 'Katapulta jest teraz zablokowana.' });
     const state = room.game.players[player.slot];
     const now = Date.now();
     if (now < state.catapultReadyAt) return ackSafe(ack, { ok: false, error: 'Katapulta jeszcze się przeładowuje.' });
-    const sheep = state.sheep.find((item) => item.id === sheepId);
-    if (!sheep) return ackSafe(ack, { ok: false, error: 'Nie znaleziono owcy.' });
-    if (sheep.status !== 'ready') return ackSafe(ack, { ok: false, error: 'Ta owca nie jest gotowa do lotu.' });
-    const safeAngle = clamp(Number(angle), 15, 75);
-    const safePower = clamp(Number(power), 40, 100);
-    if (!Number.isFinite(safeAngle) || !Number.isFinite(safePower)) return ackSafe(ack, { ok: false, error: 'Nieprawidłowe parametry strzału.' });
-
-    const cooldown = Math.max(5000, CONFIG.baseCatapultCooldownMs - state.upgrades.catapult * 800 - ((CONFIG.matchDurationMs - (now - room.game.startedAt)) <= CONFIG.finalRushMs ? 400 : 0));
+    const unitIndex = state.units.findIndex((item) => item.id === unitId);
+    if (unitIndex < 0) return ackSafe(ack, { ok: false, error: 'Nie znaleziono jednostki.' });
+    const unit = state.units[unitIndex];
+    if (unit.status !== 'ready') return ackSafe(ack, { ok: false, error: 'Ta jednostka nie jest gotowa do lotu.' });
+    const requestedAngle = clamp(Number(angle), 15, 75);
+    const requestedPower = clamp(Number(power), 40, 100);
+    if (!Number.isFinite(requestedAngle) || !Number.isFinite(requestedPower)) return ackSafe(ack, { ok: false, error: 'Nieprawidłowe parametry strzału.' });
+    const angleErrorPct = randomErrorPct();
+    const powerErrorPct = randomErrorPct();
+    const cooldown = Math.max(4200, CONFIG.baseCatapultCooldownMs - state.upgrades.catapult * 540 - (CONFIG.matchDurationMs - (now - room.game.startedAt) <= CONFIG.finalRushMs ? 450 : 0));
     state.catapultReadyAt = now + cooldown;
-    sheep.status = 'flying';
-    sheep.availableAt = 0;
     state.shots += 1;
-
-    const simulation = simulateShot(room, player.slot, sheep, safeAngle, safePower);
+    state.unitsLost += 1;
+    state.units.splice(unitIndex, 1);
+    const lossGlory = UNIT_TYPES[unit.kind].lossGlory;
+    state.glory = Math.max(0, state.glory - lossGlory);
+    const simulation = simulateShot(room, player.slot, unit, requestedAngle, requestedPower, angleErrorPct, powerErrorPct);
     const shotId = `strzal-${room.nextShotId++}`;
-    const shot = {
-      id: shotId,
-      shooterSlot: player.slot,
-      sheepId: sheep.id,
-      sheepType: sheep.type,
-      sheepName: sheep.name,
-      simulation,
-      launchedAt: now
-    };
-    room.game.activeShots.set(shotId, shot);
+    room.game.activeShots.set(shotId, { id: shotId, shooterSlot: player.slot, unit, simulation, launchedAt: now });
     room.game.version += 1;
-    appendLog(room, `${player.flockName} wystrzeliwuje ${sheep.name}.`);
-
-    io.to(room.code).emit('shot:start', {
-      shotId,
-      shooterSlot: player.slot,
-      sheep: {
-        id: sheep.id,
-        type: sheep.type,
-        name: sheep.name,
-        fur: round(sheep.fur, 1)
-      },
-      path: simulation.path,
-      durationMs: simulation.durationMs,
-      flight: simulation.flight
-    });
-    io.to(room.code).emit('toast', {
-      message: `${sheep.name} leci. Wyraziła umiarkowany sprzeciw.`,
-      tone: 'fire',
-      slot: player.slot
-    });
+    io.to(room.code).emit('shot:start', { shotId, shooterSlot: player.slot, unit, path: simulation.path, durationMs: simulation.durationMs, flight: simulation.flight });
+    io.to(room.code).emit('toast', { message: `${unit.name} leci. Los zmienił kąt o ${angleErrorPct >= 0 ? '+' : ''}${angleErrorPct}% i moc o ${powerErrorPct >= 0 ? '+' : ''}${powerErrorPct}%.`, tone: 'fire', slot: player.slot });
     emitGameState(room);
     setTimeout(() => handleShotImpact(room, shotId), simulation.durationMs);
-    ackSafe(ack, { ok: true, shotId, cooldownMs: cooldown });
+    ackSafe(ack, { ok: true, shotId, cooldownMs: cooldown, angleErrorPct, powerErrorPct, actualAngle: simulation.flight.actualAngle, actualPower: simulation.flight.actualPower, gloryLost: lossGlory });
   });
 
   socket.on('disconnect', () => {
-    const code = socket.data.roomCode;
-    const room = code ? rooms.get(code) : null;
+    const room = socket.data.roomCode ? rooms.get(socket.data.roomCode) : null;
     if (!room) return;
     if (socket.data.role === 'display' && room.displaySocketId === socket.id) {
       room.displaySocketId = null;
@@ -1057,12 +793,7 @@ io.on('connection', (socket) => {
     }
     if (socket.data.role === 'player') {
       const player = findPlayerBySocket(room, socket.id);
-      if (player) {
-        player.connected = false;
-        player.socketId = null;
-        emitLobby(room);
-        if (room.game) io.to(room.code).emit('game:public', publicGameState(room));
-      }
+      if (player) { player.connected = false; player.socketId = null; emitLobby(room); if (room.game) io.to(room.code).emit('game:public', publicGameState(room)); }
     }
   });
 });
@@ -1071,21 +802,11 @@ if (require.main === module) {
   server.listen(CONFIG.port, '0.0.0.0', () => {
     const lan = getLanAddress();
     console.log('');
-    console.log('WOJNA PASTWISK');
+    console.log('WOJNA PASTWISK v2');
     console.log(`Lokalnie: http://localhost:${CONFIG.port}`);
     console.log(`W sieci Wi-Fi: http://${lan}:${CONFIG.port}`);
     console.log('');
   });
 }
 
-module.exports = {
-  CONFIG,
-  FLOCKS,
-  SHEEP_TYPES,
-  clamp,
-  createSheep,
-  sheepAero,
-  sheepTotalMass,
-  simulateShot,
-  currentWeatherModifiers
-};
+module.exports = { CONFIG, FLOCKS, UNIT_TYPES, clamp, unitAero, unitTotalMass, simulateShot, weatherModifiers, visualTier };
